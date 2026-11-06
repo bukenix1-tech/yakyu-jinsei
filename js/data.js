@@ -221,6 +221,7 @@ const VISUAL_WEIGHTS = [15, 30, 30, 18, 7]; // ビジュアル ★1〜★5 の�
 
 const ROSTER_MAX = 70;        // 支配下登録の上限
 const ROSTER_MIN = 50;        // これを下回ると育成選手を上げて埋める
+const ROOKIE_KEEP_YEARS = 3;  // ドラフトで入った選手は、この年数のシーズンを終えるまで AI の球団が戦力外にしない（仮・AI）
 const ACTIVE_MAX = 29;        // 一軍に登録できる人数
 const FOREIGN_ACTIVE_MAX = 4; // 一軍に登録できる外国人の数
 const REREGISTER_DAYS = 10;   // 登録を抹消したら、この日数は一軍に戻せない

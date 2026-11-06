@@ -2140,6 +2140,9 @@ function draftNow(h) {
   return gradeByRank(rows, 'nowPts');
 }
 
+// 入団してまもないドラフト選手。今の総合力だけで切ると、才能があっても高卒の新人から先に切られてしまう
+function rookieProtected(p) { return !!p.drafted && S.year - p.drafted.year < ROOKIE_KEEP_YEARS; }
+
 function offCampStart() {
   // ドラフト採点を残す（スカウトの見立てが消える前に）
   const grades = draftGrades(S.off.draft);
@@ -2165,7 +2168,8 @@ function offCampStart() {
       signFreeAgent(t, best);
     }
     while (t.players.length > ROSTER_MAX - 2) {
-      const worst = teamPlayers(t).sort((a, b) => tradeValue(a) - tradeValue(b))[0];
+      const ps = teamPlayers(t), can = ps.filter(p => !rookieProtected(p));
+      const worst = (can.length ? can : ps).sort((a, b) => tradeValue(a) - tradeValue(b))[0];
       toFreeAgent(worst);
     }
   });

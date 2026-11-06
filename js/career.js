@@ -53,7 +53,9 @@ function careerLabel() {
   const m = S.me;
   if (m.ended) return '引退';
   if (m.job) return `${S.teams[m.job.teamId].short}の${m.job.title}`;
-  return m.phase === 'player' ? '現役選手' : '無職';
+  if (m.phase !== 'player') return '無職';
+  const p = mePlayer();
+  return p && p.teamId == null ? '現役選手（自由契約）' : '現役選手';
 }
 
 // ---------- 年表 ----------
