@@ -1,0 +1,510 @@
+:root {
+  --bg: #eef2f7;
+  --card: #ffffff;
+  --ink: #1f2937;
+  --muted: #6b7280;
+  --line: #e5e7eb;
+  --accent: #2563eb;
+  --good: #16a34a;
+  --bad: #dc2626;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+  font-size: 14px; line-height: 1.5;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button {
+  font: inherit; padding: 6px 12px; border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; cursor: pointer;
+}
+button:hover:not(:disabled) { background: #f1f5f9; }
+button:disabled { opacity: .45; cursor: default; }
+button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+button.primary:hover:not(:disabled) { background: #1d4ed8; }
+button.danger { color: var(--bad); border-color: #fca5a5; }
+button.big { font-size: 16px; padding: 10px 22px; font-weight: bold; }
+button.sm { padding: 1px 7px; font-size: 12px; }
+button.ghost { background: transparent; color: #fff; border-color: rgba(255,255,255,.5); }
+select, input[type=range] { font: inherit; }
+select { padding: 3px 4px; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; }
+
+header {
+  background: var(--c); color: #fff; padding: 10px 16px;
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 5; box-shadow: 0 2px 6px rgba(0,0,0,.2);
+}
+header .tname { font-size: 20px; font-weight: bold; }
+header .meta { opacity: .95; }
+header .hr { display: flex; gap: 6px; flex-wrap: wrap; }
+header .neg { color: #fecaca; }
+.tabs { display: flex; gap: 2px; padding: 8px 16px 0; overflow-x: auto; background: #dbe3ee; }
+.tabs button { border: none; border-radius: 8px 8px 0 0; background: #c7d2e0; white-space: nowrap; }
+.tabs button.on { background: var(--bg); font-weight: bold; }
+main { padding: 12px 16px 40px; max-width: 1200px; margin: 0 auto; }
+
+.card { background: var(--card); border-radius: 10px; padding: 12px 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.card h2 { font-size: 17px; margin: 0 0 8px; }
+h3 { font-size: 14px; margin: 12px 0 6px; color: #374151; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 12px; }
+.grid2 > .card { margin-bottom: 0; }
+.grid2 + .card, .card + .grid2 { margin-top: 12px; }
+.row { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.muted { color: var(--muted); }
+.note { color: var(--muted); font-size: 12px; }
+.neg { color: var(--bad); }
+.win { color: var(--good); font-weight: bold; }
+.lose { color: var(--bad); font-weight: bold; }
+.big-text { font-size: 20px; font-weight: bold; letter-spacing: 2px; }
+.nowrap { white-space: nowrap; }
+
+.scroll { overflow-x: auto; }
+table.tbl { border-collapse: collapse; width: 100%; font-size: 13px; }
+.tbl th, .tbl td { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: center; white-space: nowrap; }
+.tbl th { background: #f8fafc; font-weight: 600; color: #374151; }
+.tbl td.l, .tbl th.l { text-align: left; }
+.tbl tr.me td { background: #fef9c3; }
+.tbl tr.sel td { background: #dbeafe; }
+.tbl.money td { text-align: right; }
+
+.chip { display: inline-block; color: #fff; border-radius: 4px; padding: 0 6px; font-size: 12px; font-weight: bold; }
+.tag { display: inline-block; font-size: 11px; padding: 0 5px; border-radius: 4px; background: #e5e7eb; margin-left: 4px; color: #374151; }
+.tag.bad { background: #fee2e2; color: var(--bad); }
+
+/* 能力のランク（S〜G） */
+.g { display: inline-block; width: 20px; text-align: center; font-weight: 900; border-radius: 3px; color: #fff; font-size: 12px; margin-right: 2px; }
+.gS { background: linear-gradient(135deg, #f59e0b, #fde047); color: #7c2d12; }
+.gSS { background: linear-gradient(135deg, #b45309, #facc15 45%, #fef9c3 55%, #f59e0b); color: #451a03; font-size: 10px; letter-spacing: -0.5px; box-shadow: 0 0 0 1px #b45309; }
+.gA { background: #e11d48; }
+.gB { background: #f97316; }
+.gC { background: #eab308; }
+.gD { background: #84cc16; }
+.gE { background: #10b981; }
+.gF { background: #3b82f6; }
+.gG { background: #9ca3af; }
+small.num { color: var(--muted); font-size: 11px; }
+.cond { font-weight: bold; font-size: 15px; }
+.c5 { color: #e11d48; } .c4 { color: #f97316; } .c3 { color: #ca8a04; } .c2 { color: #3b82f6; } .c1 { color: #7c3aed; }
+.stars { color: #f59e0b; letter-spacing: -1px; }
+
+.bars .bar { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.bars .bl { width: 90px; }
+.bt { display: inline-block; flex: 1; max-width: 260px; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
+.bt span { display: block; height: 100%; background: linear-gradient(90deg, #60a5fa, #2563eb); }
+.bt span.fame { background: linear-gradient(90deg, #fb923c, #e11d48); }
+.bt span.loyal { background: linear-gradient(90deg, #86efac, #16a34a); }
+.bt.wide { display: block; max-width: none; margin-bottom: 8px; }
+
+.vs { font-size: 18px; margin: 6px 0; }
+.vs .chip { font-size: 16px; padding: 2px 10px; }
+.result { font-size: 18px; font-weight: bold; margin-bottom: 6px; }
+.result.win { color: var(--good); } .result.lose { color: var(--bad); }
+table.line { border-collapse: collapse; margin: 4px 0; }
+.line th, .line td { border: 1px solid var(--line); padding: 2px 8px; text-align: center; min-width: 26px; }
+.line td.r { font-weight: bold; background: #f8fafc; }
+ul.news, ul.log { list-style: none; padding: 0; margin: 0; }
+ul.news li, ul.log li { padding: 3px 0; border-bottom: 1px dashed var(--line); }
+ul.news li.big { font-weight: bold; }
+ul.news li.good, ul.log li.good { color: var(--good); }
+ul.news li.bad, ul.log li.bad { color: var(--bad); }
+details summary { cursor: pointer; margin-top: 8px; color: var(--accent); }
+
+.leaders { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px 16px; }
+.leaders ol { margin: 0; padding-left: 20px; }
+.seg { display: flex; gap: 0; margin: 6px 0; }
+.seg button { border-radius: 0; }
+.seg button:first-child { border-radius: 6px 0 0 6px; }
+.seg button:last-child { border-radius: 0 6px 6px 0; }
+.seg button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.steps { margin-bottom: 10px; font-weight: bold; color: var(--muted); }
+.steps span { padding: 2px 8px; }
+.steps span.on { background: var(--accent); color: #fff; border-radius: 12px; }
+
+.title { max-width: 720px; margin: 40px auto; padding: 0 16px; text-align: center; }
+.title h1 { font-size: 40px; margin: 0; }
+.title .sub { color: var(--muted); margin-bottom: 20px; }
+.title .card { text-align: left; margin-top: 20px; }
+.teampick { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin: 10px 0; }
+.tp { border: 2px solid var(--c); color: var(--c); font-weight: bold; padding: 12px; }
+.tp.on, .tp:hover { background: var(--c) !important; color: #fff; }
+
+.modal { position: fixed; inset: 0; background: rgba(15,23,42,.5); display: flex; align-items: flex-start; justify-content: center; z-index: 20; overflow-y: auto; padding: 40px 12px; }
+.modal.hidden { display: none; }
+.modal-box { background: #fff; border-radius: 12px; padding: 18px 20px; max-width: 760px; width: 100%; position: relative; }
+.modal-close { position: absolute; top: 8px; right: 8px; border: none; font-size: 20px; background: none; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #111827; color: #fff; padding: 10px 18px; border-radius: 8px; z-index: 30; animation: fade 3s forwards; }
+@keyframes fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+
+@media (max-width: 600px) {
+  .grid2 { grid-template-columns: 1fr; }
+  header .tname { font-size: 17px; }
+}
+
+/* ポストシーズン */
+.series { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; }
+.series.mine { border-color: #f59e0b; background: #fffbeb; }
+.series h3 { margin-top: 0; }
+.vsline { font-size: 15px; }
+.big-num { font-size: 22px; }
+
+/* 覚醒 */
+ul.news li.awaken { color: #b45309; font-weight: bold; }
+.tag.awaken-tag { background: linear-gradient(135deg, #f59e0b, #fde047); color: #7c2d12; font-weight: bold; }
+.awaken-box { text-align: center; padding: 10px 0; }
+.awaken-title {
+  font-size: 40px; font-weight: 900; letter-spacing: 6px; margin-bottom: 12px;
+  background: linear-gradient(90deg, #f59e0b, #ef4444, #f59e0b); -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: flash 0.9s ease-in-out 3;
+}
+.awaken-text { font-size: 16px; font-weight: bold; }
+@keyframes flash { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+
+/* 大覚醒 */
+.awaken-box.big { background: radial-gradient(circle, #fff7ed 0%, #fde68a 55%, #fca5a5 100%); border-radius: 10px; padding: 18px 8px; }
+.awaken-box.big .awaken-title { font-size: 52px; animation: boom 0.6s ease-in-out 5; }
+.awaken-text.big { font-size: 19px; color: #b91c1c; }
+.tag.awaken-tag.big { background: linear-gradient(135deg, #ef4444, #f59e0b); color: #fff; }
+@keyframes boom { 0%, 100% { transform: scale(1) rotate(0); } 30% { transform: scale(1.25) rotate(-3deg); } 60% { transform: scale(1.1) rotate(3deg); } }
+
+/* ドラフト候補のアマ時代・講評 */
+.tbl td.wrap { white-space: normal; min-width: 280px; max-width: 420px; font-size: 12px; line-height: 1.45; }
+.atitle { color: #b45309; font-weight: bold; }
+
+/* 一軍・二軍 */
+.tag.farm { background: #e0f2fe; color: #0369a1; }
+.small { font-size: 11px; }
+
+/* セーブのスロット */
+.slots { display: grid; gap: 10px; }
+.slot { display: grid; grid-template-columns: 90px 1fr auto; gap: 12px; align-items: center; border: 2px solid var(--c, #cbd5e1); border-left-width: 10px; border-radius: 10px; padding: 10px 12px; background: #fff; }
+.slot.empty { border-style: dashed; border-color: #cbd5e1; }
+.slot-no { font-weight: 900; font-size: 16px; color: #475569; }
+.slot-team { font-size: 18px; font-weight: bold; color: var(--c); }
+.slot-btns { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
+@media (max-width: 600px) { .slot { grid-template-columns: 1fr; } }
+
+/* ドラフト候補の「気になる」 */
+.star-btn { border: none; background: none; font-size: 18px; color: #cbd5e1; padding: 0 4px; }
+.star-btn.on { color: #f59e0b; }
+.release-list { max-height: 420px; overflow-y: auto; }
+
+/* 二刀流・天才 */
+.tag.twoway { background: #ede9fe; color: #6d28d9; font-weight: bold; }
+.tag.genius { background: linear-gradient(135deg, #22d3ee, #a78bfa); color: #fff; font-weight: bold; }
+
+/* ポジションごとの人数・しぼり込み */
+.poscount { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; font-size: 13px; }
+.poscount .pc { background: #f1f5f9; border-radius: 6px; padding: 2px 8px; }
+.poscount .pc small { color: var(--muted); }
+.seg.wrapseg { flex-wrap: wrap; }
+.genius-box { border: 2px solid #a78bfa; }
+
+/* ポジションの色つきの印 */
+.pbs { white-space: nowrap; }
+.pb { display: inline-block; min-width: 20px; text-align: center; border-radius: 4px; color: #fff; font-weight: bold; font-size: 12px; padding: 0 3px; margin-right: 2px; }
+.pb-投 { background: #dc2626; }
+.pb-捕 { background: #2563eb; }
+.pb-一 { background: #ea580c; }
+.pb-二 { background: #16a34a; }
+.pb-三 { background: #ca8a04; }
+.pb-遊 { background: #0891b2; }
+.pb-外 { background: #7c3aed; }
+.pb-指 { background: #475569; }
+.apt { display: inline-block; font-size: 11px; border: 1px solid #e5e7eb; border-radius: 4px; padding: 0 3px; margin-right: 2px; background: #fff; }
+.apt.a2 { color: #dc2626; border-color: #fecaca; font-weight: bold; }
+.apt.a1 { color: #374151; }
+.apt.a0 { color: #9ca3af; }
+
+/* ---------- スマホ用 ---------- */
+.pcards { display: grid; gap: 8px; }
+.pcard { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: #fff; }
+.pcard.sel { background: #eff6ff; border-color: #93c5fd; }
+.pc-top { display: flex; align-items: center; gap: 8px; }
+.pc-name { flex: 1; font-weight: bold; font-size: 15px; min-width: 0; }
+.pc-ovr { font-size: 20px; font-weight: 900; text-align: center; line-height: 1; min-width: 38px; }
+.pc-ovr small { display: block; font-size: 10px; color: var(--muted); font-weight: normal; }
+.pc-sub { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; margin: 4px 0; }
+.pc-abil { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; }
+.pc-abil .ab { white-space: nowrap; }
+.pc-line { font-size: 12px; color: #374151; margin-top: 4px; line-height: 1.45; }
+.pc-act { margin-top: 6px; display: flex; gap: 6px; justify-content: flex-end; align-items: center; flex-wrap: wrap; }
+.order-no { font-size: 20px; font-weight: 900; width: 26px; text-align: center; }
+.pc-top select.grow { flex: 1; min-width: 0; }
+
+@media (max-width: 700px) {
+  body { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .hide-m { display: none; }
+  header { padding: 8px 12px; }
+  header .tname { font-size: 16px; }
+  header .meta { font-size: 11px; line-height: 1.4; }
+  /* 試合を進めるボタンは画面の下に固定（親指で押しやすく） */
+  header .hr { position: fixed; left: 0; right: 0; bottom: 0; background: var(--c); padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+    display: flex; gap: 6px; z-index: 15; box-shadow: 0 -2px 8px rgba(0,0,0,.25); }
+  header .hr button { flex: 1; padding: 12px 4px; font-size: 14px; }
+  header .hr .ghost { flex: 0 0 auto; padding: 12px 10px; }
+  header .hr .tag { flex: 1; text-align: center; padding: 10px; }
+  .tabs { padding: 6px 8px 0; }
+  .tabs button { padding: 9px 12px; }
+  main { padding: 8px 8px 20px; }
+  .card { padding: 10px; border-radius: 8px; }
+  .card h2 { font-size: 16px; }
+  .tbl { font-size: 12px; }
+  .tbl th, .tbl td { padding: 4px; }
+  /* 横にスクロールしても、いちばん左の列（名前）は残す */
+  .tbl tr > *:first-child { position: sticky; left: 0; background: #fff; z-index: 1; }
+  .tbl tr > th:first-child { background: #f8fafc; }
+  .tbl tr.me > *:first-child { background: #fef9c3; }
+  .tbl tr.sel > *:first-child { background: #dbeafe; }
+  /* 画面より長い中身でも、白い背景が下まで伸びるように（flex の stretch だと画面の高さで止まる） */
+  .modal { padding: 0; display: block; }
+  .modal-box { border-radius: 0; min-height: 100%; padding: 14px 12px 40px; }
+  .modal-close { position: sticky; top: 0; float: right; background: #fff; border-radius: 50%; width: 36px; height: 36px; }
+  .bars .bl { width: 72px; }
+  .bt { max-width: none; }
+  button.sm { padding: 6px 10px; font-size: 13px; }
+  .seg button { padding: 7px 10px; }
+  .vs { font-size: 16px; }
+  .title { margin: 16px auto; }
+  .title h1 { font-size: 30px; }
+  .slot { grid-template-columns: 1fr; }
+  .slot-btns { flex-direction: row; flex-wrap: wrap; }
+  .grid2 { grid-template-columns: 1fr; }
+  .leaders { grid-template-columns: 1fr 1fr; }
+  .toast { bottom: calc(90px + env(safe-area-inset-bottom)); width: calc(100% - 32px); text-align: center; }
+  .poscount { font-size: 12px; }
+}
+
+/* ドラフトの抽選 */
+.lose-box .awaken-title { background: linear-gradient(90deg, #64748b, #334155); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* 今季の成績・補強のおすすめ */
+.tbl.stats tr.qual td { background: #f0fdf4; }
+.tbl.stats td.sortcol { font-weight: bold; }
+a.sorth { color: inherit; white-space: nowrap; }
+a.sorth.on { color: var(--accent); }
+.needs { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+.needs ol { margin: 6px 0 2px; padding-left: 22px; }
+.needs li { margin: 3px 0; }
+
+/* セーブのファイル読み込みボタン */
+label.filebtn { display: inline-block; font-size: 13px; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; cursor: pointer; text-align: center; }
+label.filebtn:hover { background: #f1f5f9; }
+label.filebtn input { display: none; }
+
+/* ドラフトの評価と総評 */
+.tier { display: inline-block; font-size: 12px; font-weight: bold; padding: 1px 8px; border-radius: 10px; margin-bottom: 2px; }
+.tier.t1 { background: #dc2626; color: #fff; }
+.tier.t2 { background: #f97316; color: #fff; }
+.tier.t3 { background: #fde68a; color: #92400e; }
+.tier.t4 { background: #dbeafe; color: #1e40af; }
+.tier.t5 { background: #e5e7eb; color: #374151; }
+.tier.t6 { background: #f3f4f6; color: #9ca3af; }
+.review { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+.review p { margin: 6px 0 0; line-height: 1.7; }
+
+/* セーブの書き出しのすすめ */
+.backup-banner { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 8px 12px; margin: 0 0 10px; line-height: 1.6; }
+.backup-btns { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+.backup-ask { text-align: left; }
+.backup-ask label { display: block; margin-top: 8px; }
+
+/* 記録・殿堂 */
+.hof-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; margin: 6px 0; line-height: 1.6; }
+.hof-card.hof { background: #fffbeb; border-color: #fcd34d; }
+.hof-card.mine { box-shadow: inset 4px 0 0 var(--accent); }
+.hof-name { margin-bottom: 2px; }
+.leaders li.me { font-weight: bold; }
+tr.total td { font-weight: bold; border-top: 2px solid #cbd5e1; }
+ol.plain { padding-left: 22px; }
+
+/* 成長の時期 */
+.phase { display: inline-block; font-size: 11px; font-weight: bold; line-height: 1; padding: 2px 4px; margin-left: 3px; border-radius: 4px; vertical-align: 1px; }
+.ph-grow { background: #dcfce7; color: #166534; }
+.ph-peak { background: #fef3c7; color: #92400e; }
+.ph-decline { background: #e5e7eb; color: #4b5563; }
+.growth { margin: 6px 0 10px; }
+.growth p { margin: 0 0 4px; line-height: 1.7; }
+.gbar { position: relative; height: 22px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; margin-top: 18px; }
+.gb-seg { position: absolute; top: 0; bottom: 0; font-size: 11px; display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; }
+.gb-now { position: absolute; top: -18px; bottom: -2px; border-left: 2px solid #dc2626; font-size: 11px; }
+.gb-now b { position: absolute; top: 0; left: 3px; color: #dc2626; white-space: nowrap; }
+.gb-ages { display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; }
+
+/* 殿堂入りの星（ふつうの★とは別の色） */
+.star-btn.hof-star.on, .hof-star-sample { color: #9333ea; }
+
+/* 古い年の記録の整理 */
+details.slim { margin-top: 14px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; background: #f8fafc; }
+details.slim summary { cursor: pointer; font-weight: bold; }
+
+/* 版の表示 */
+.version { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; background: #f1f5f9; border-radius: 8px; padding: 6px 10px; margin: 6px 0 10px; font-size: 13px; }
+
+/* ドラフト採点 */
+.dgrade { display: inline-block; min-width: 22px; text-align: center; font-weight: bold; border-radius: 6px; padding: 1px 6px; color: #fff; }
+.dgrade.ga { background: #dc2626; } .dgrade.gb { background: #f97316; } .dgrade.gc { background: #eab308; }
+.dgrade.gd { background: #64748b; } .dgrade.ge { background: #334155; }
+
+/* 弾道 */
+.ab.traj { background: #eef2ff; color: #3730a3; border-radius: 4px; padding: 0 4px; margin-left: 2px; }
+.ab.traj b { font-weight: 700; }
+.ab.traj.t4 { background: #fee2e2; color: #b91c1c; }
+.ab.traj.t3 { background: #ffedd5; color: #c2410c; }
+
+/* 伸びが止まった能力 */
+.gstack { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.1; }
+.grow1 { display: inline-flex; align-items: center; gap: 4px; }
+.stall { font-size: 10px; color: #fff; background: #8a8f98; border-radius: 3px; padding: 0 3px; margin-top: 1px; }
+.tag.rare { background: linear-gradient(135deg, #f59e0b, #dc2626); color: #fff; font-weight: bold; }
+
+/* オーダー画面：打順表と守備図 */
+.po-hint { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 6px 10px; margin: 6px 0 8px; }
+.po-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; align-items: start; }
+.po-list { min-width: 0; }
+.po-row {
+  display: grid; grid-template-columns: 22px 30px minmax(90px, 1fr) 24px 34px repeat(5, 42px) 70px;
+  align-items: center; gap: 4px; width: 100%; text-align: left;
+  padding: 4px 6px; margin: 0 0 3px; border: 1px solid var(--line); border-radius: 6px; background: #fff;
+}
+.po-row:hover:not(.po-head) { background: #f1f5f9; }
+.po-row.sel, .po-row.sel:hover { background: #fef3c7; border-color: #f59e0b; box-shadow: 0 0 0 2px #fcd34d inset; }
+.po-row.inj { opacity: .7; }
+.po-head { background: #1e3a5f; color: #fff; font-size: 12px; cursor: default; border-color: #1e3a5f; }
+.po-no { font-weight: bold; text-align: center; }
+.po-name { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.po-name .tag { margin-left: 4px; }
+.po-g { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
+.po-traj .ab { white-space: nowrap; }
+.po-st { font-size: 12px; white-space: nowrap; text-align: right; }
+.po-field { position: relative; aspect-ratio: 1 / 1; border-radius: 10px; overflow: hidden; background: #2f6f2b; }
+.po-field svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.fspot, .fmound {
+  position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center;
+  padding: 2px 4px; border-radius: 6px; background: rgba(255,255,255,.92); border: 1px solid rgba(0,0,0,.2);
+  font-size: 12px; line-height: 1.2; min-width: 46px;
+}
+.fspot.sel, .fspot.sel:hover { background: #fde68a; border-color: #f59e0b; box-shadow: 0 0 0 2px #f59e0b; }
+.fspot.bad { border-color: var(--bad); }
+.fmound { left: 50%; top: 66%; background: rgba(255,255,255,.75); }
+.fname { font-weight: bold; white-space: nowrap; }
+@media (max-width: 760px) {
+  .po-wrap { grid-template-columns: 1fr; }
+  .po-field { max-width: 360px; margin: 0 auto; width: 100%; order: -1; }
+  .po-row { grid-template-columns: 18px 26px minmax(0, 1fr) 20px 36px repeat(5, 22px); font-size: 13px; gap: 3px; padding: 4px; }
+  .po-row .po-st { display: none; }
+  .po-g small { display: none; }
+}
+
+/* 一軍・二軍の入れ替え */
+.ro-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.ro-col { min-width: 0; border-radius: 8px; padding: 6px 8px; }
+.ro-col h2 { margin: 2px 0; padding: 4px 8px; border-radius: 6px; color: #fff; font-size: 16px; }
+.ro-act h2 { background: #1e3a5f; }
+.ro-farm h2 { background: #4b5563; }
+.ro-act { background: #eef4fb; }
+.ro-farm { background: #f3f4f6; }
+.ro-row {
+  display: grid; grid-template-columns: 54px minmax(70px, 1fr) 40px 22px auto 28px;
+  align-items: center; gap: 4px; width: 100%; text-align: left;
+  padding: 3px 6px; margin: 0 0 3px; border: 1px solid var(--line); border-radius: 6px; background: #fff; font-size: 13px;
+}
+.ro-row:hover { background: #f1f5f9; }
+.ro-row.sel, .ro-row.sel:hover { background: #fef3c7; border-color: #f59e0b; box-shadow: 0 0 0 2px #fcd34d inset; }
+.ro-row.locked { opacity: .6; }
+.ro-name { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ro-name .tag { margin-left: 3px; }
+.ro-age { white-space: nowrap; font-size: 12px; }
+.ro-abil { display: flex; gap: 5px; flex-wrap: wrap; font-size: 12px; }
+.ro-ovr { font-weight: bold; text-align: right; }
+@media (max-width: 760px) {
+  .ro-wrap { grid-template-columns: 1fr; }
+  .ro-row { grid-template-columns: auto minmax(0, 1fr) 36px 20px 26px; }
+  .ro-abil { grid-column: 2 / -1; grid-row: 2; }
+}
+
+/* サブポジの札 */
+.subs { display: inline-flex; gap: 1px; margin-left: 1px; }
+.pb.sub { background: #fff; border: 1px solid currentColor; min-width: 16px; font-size: 11px; line-height: 14px; padding: 0 2px; margin-right: 0; }
+.pb.sub.pb-捕 { color: #2563eb; }
+.pb.sub.pb-一 { color: #ea580c; }
+.pb.sub.pb-二 { color: #16a34a; }
+.pb.sub.pb-三 { color: #ca8a04; }
+.pb.sub.pb-遊 { color: #0891b2; }
+.pb.sub.pb-外 { color: #7c3aed; }
+.po-can { margin-left: 6px; font-weight: normal; }
+@media (max-width: 760px) { .po-can { display: none; } }
+.tag.steal.s-積極的 { background: #dcfce7; color: #166534; border-color: #86efac; }
+.tag.steal.s-慎重 { background: #f1f5f9; color: #475569; }
+.tag.eye.e2 { background: #fef3c7; color: #92400e; border-color: #fcd34d; font-weight: bold; }
+.tag.eye.e1 { background: #ecfeff; color: #155e75; border-color: #a5f3fc; }
+.tag.eye.ex { background: #f1f5f9; color: #64748b; }
+
+/* 試合を順を追って見る（野球速報のアプリふう） */
+.pbp-title { font-size: 16px; margin: 0 0 6px; }
+.pbp-line td.pbp-now-cell { background: #fef3c7; font-weight: bold; }
+.pbp-line th, .pbp-line td { padding: 2px 5px; min-width: 18px; white-space: nowrap; }
+.pbp-btns button { margin: 2px 0; }
+.pbp-live { background: #0f172a; color: #f8fafc; border-radius: 10px; padding: 10px 12px; margin: 8px 0; }
+.pbp-live .muted { color: #94a3b8; }
+.pbp-score { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 15px; }
+.pbp-score b { font-size: 28px; min-width: 28px; text-align: center; }
+.pbp-team { font-weight: bold; max-width: 7em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pbp-inning { font-size: 13px; background: #334155; border-radius: 6px; padding: 2px 8px; white-space: nowrap; }
+.pbp-mid { display: flex; align-items: center; gap: 14px; margin-top: 8px; flex-wrap: wrap; }
+.pbp-field { position: relative; width: 60px; height: 50px; flex: none; }
+.pbp-field .base { position: absolute; width: 15px; height: 15px; transform: rotate(45deg); border: 2px solid #64748b; background: transparent; }
+.pbp-field .base.on { background: #f59e0b; border-color: #f59e0b; }
+.pbp-field .b2 { left: 21px; top: 2px; } .pbp-field .b4 { left: 4px; top: 20px; } .pbp-field .b1 { left: 38px; top: 20px; }
+.pbp-out { font-weight: bold; white-space: nowrap; }
+.pbp-out .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; border: 2px solid #64748b; margin-left: 3px; vertical-align: middle; }
+.pbp-out .dot.on { background: #ef4444; border-color: #ef4444; }
+.pbp-match { flex: 1; min-width: 200px; line-height: 1.6; font-size: 14px; }
+.pbp-now { margin-top: 8px; padding: 6px 8px; border-radius: 6px; background: #1e293b; font-size: 15px; }
+.pbp-now.run { background: #7c2d12; } .pbp-now.hr { background: #b91c1c; }
+.pbp-pts { color: #fde047; }
+.pbp-final { text-align: center; margin-top: 6px; }
+.pbp-final p { margin: 4px 0; }
+.pbp-log { list-style: none; padding: 0; margin: 6px 0; max-height: 45vh; overflow-y: auto; }
+.pbp-log li { padding: 3px 4px; border-bottom: 1px solid var(--line); }
+.pbp-log li.pbp-inn { font-weight: bold; background: var(--line); }
+.pbp-log li.pbp-run { font-weight: bold; }
+
+.pbp-nono { margin-top: 6px; padding: 4px 8px; border-radius: 6px; background: #f5c542; color: #2b2100; font-weight: bold; text-align: center; }
+
+/* ---------- 人生 ---------- */
+.tag.me-tag { background: #f59e0b; color: #fff; font-weight: bold; }
+.tname small { font-weight: normal; font-size: 12px; opacity: .9; }
+.life-bar { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; position: relative; margin: 4px 0; }
+.life-bar > span { display: block; height: 100%; background: var(--accent); }
+.life-bar > i { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--bad); }
+.life-kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px 14px; margin: 8px 0; }
+.life-kv div small { display: block; color: var(--muted); font-size: 11px; }
+.offer { border: 1px solid var(--line); border-left: 5px solid var(--c, var(--accent)); border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+.offer h3 { margin: 0 0 4px; font-size: 15px; }
+.pkgs { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin-top: 6px; }
+.pkg { border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 13px; }
+.pkg button { width: 100%; margin-top: 4px; }
+.verdict { padding: 10px 12px; border-radius: 8px; background: #f1f5f9; font-weight: bold; margin: 6px 0; }
+.verdict.fired { background: #fee2e2; color: #991b1b; }
+.resume h1 { margin: 12px 0 4px; }
+.notice-box { text-align: center; padding: 8px; }
+.notice-box h2 { margin: 6px 0; }
+
+/* スマホで表が画面を押し広げないように（表はカードの中で横に動かす） */
+@media (max-width: 700px) {
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .grid2 > * { min-width: 0; }
+  .card { overflow-x: auto; }
+}
+/* じぶん年表 */
+.tl { list-style: none; margin: 0; padding: 0; }
+.tl li { display: grid; grid-template-columns: 72px 26px 1fr; align-items: baseline; gap: 4px; padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.tl li:last-child { border-bottom: 0; }
+.tl-when { font-variant-numeric: tabular-nums; font-weight: bold; font-size: 13px; }
+.tl-when small { display: block; font-weight: normal; color: var(--muted); font-size: 11px; }
+.tl-move .tl-text, .tl-title .tl-text, .tl-champ .tl-text { font-weight: bold; }
+.tl-fired .tl-text, .tl-out .tl-text { color: var(--bad); font-weight: bold; }
+.tl-mini { text-align: left; }
+.tl-season .tl-text { color: var(--muted); font-size: 13px; }
+.tl-total { margin: 0 0 8px; padding: 6px 8px; background: var(--bg); border-radius: 6px; font-size: 13px; }

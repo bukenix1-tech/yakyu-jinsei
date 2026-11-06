@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>野球人生：測定</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: sans-serif; margin: 16px; }
+  table { border-collapse: collapse; margin: 8px 0; }
+  td, th { border: 1px solid #8884; padding: 2px 8px; font-size: 13px; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+</style>
+</head>
+<body>
+<h1>野球人生：測定</h1>
+<p>AI まかせで人生を何本も回し、解任率や在任年数を数えます。画面も選手の操作も使いません。値はすべて仮（AI）で、見て人が決めます。</p>
+<p><label>本数 <input id="n" type="number" value="5" min="1" max="100"></label>
+   <label>試合数 <select id="g"><option>143</option><option>83</option><option selected>43</option></select></label>
+   <button id="go">回す</button></p>
+<pre id="st"></pre>
+<div id="out"></div>
+<script src="../js/lz-string.min.js"></script>
+<script src="../js/util.js"></script>
+<script src="../js/data.js"></script>
+<script src="../js/player.js"></script>
+<script src="../js/sim.js"></script>
+<script src="../js/league.js"></script>
+<script src="../js/career.js"></script>
+<script>
+'use strict';
+const OFFERED = {};
+// AI まかせの 1 手：仕事があれば続投、なければ届いた話から無作為に選ぶ
+function botChoose() {
+  const me = S.me;
+  if (!me.offers.length) return;
+  me.offers.forEach(o => { OFFERED[o.role] = (OFFERED[o.role] || 0) + 1; });
+  if (me.job) {
+    const i = me.offers.findIndex(o => o.renew);
+    if (i >= 0) acceptOffer(i, 1); else me.offers = [];
+    return;
+  }
+  acceptOffer(U.rint(0, me.offers.length - 1), 1);
+}
+function botLife(games, kind) {
+  newGame(U.rint(0, TEAM_DEFS.length - 1), games, { name: 'テスト', isP: U.chance(0.5), kind: kind || U.pick(['高校', '大学', '社会人']), bot: true });
+  const me = S.me;
+  let guard = 0;
+  while (!me.ended && guard++ < 200) {
+    if (me.job) {
+      if (S.phase !== 'off') runSeasonAuto();
+      if (S.phase !== 'off') throw new Error('シーズンが終わらない');
+      if (me.job && ['awards', 'intl'].includes(S.off.step)) offToReview();
+      if (me.ended) break;
+      if (me.offers.length) botChoose();
+      if (S.off && S.off.step === 'review') careerNext();
+      if (S.off && S.off.step === 'camp' && (me.job || !me.offers.length)) offNewSeason();
+    } else {
+      const r = lifeStep();
+      if (r === 'offers' || r === 'retired') botChoose();
+      if (me.job && S.phase === 'off') {
+        if (S.off && S.off.step === 'review') careerNext();
+        if (S.off && S.off.step === 'camp') offNewSeason();
+      }
+      if (r === 'stuck') throw new Error('進めなくなった');
+    }
+    me.notices = [];
+    // S が大きくなりすぎないよう、ニュースだけ切る
+    if (S.news.length > 30) S.news.length = 30;
+  }
+  if (guard >= 200) throw new Error('人生が終わらない');
+  return summarize();
+}
+function summarize() {
+  const me = S.me, log = me.log;
+  const stints = [];
+  log.forEach(r => {
+    const l = stints[stints.length - 1];
+    if (l && l.team === r.team && l.role === r.role && !l.closed) { l.y++; if (r.end) { l.closed = true; l.end = r.end; } }
+    else stints.push({ team: r.team, role: r.role, y: 1, closed: !!r.end, end: r.end });
+  });
+  const money = S.teams.map(t => t.money);
+  return {
+    playEndAge: me.card ? me.card.age : null, merit: me.merit, playerYears: me.diary.length, firstYears: me.diary.filter(d => d.first).length,
+    jobYears: log.length, fired: me.fired, endAge: me.endAge, stints, byRole: log.reduce((o, r) => { o[r.role] = (o[r.role] || 0) + 1; return o; }, {}),
+    teams: new Set(log.map(r => r.team)).size, ok: log.filter(r => r.ok).length, jp: log.filter(r => r.jp).length, earned: me.earned, earnedPlayer: me.earnedPlayer || 0, earnedJob: me.earnedJob || 0,
+    moneyAvg: U.sum(money) / money.length, moneyMin: Math.min(...money), year: S.year,
+  };
+}
+function report(rs, ms) {
+  const avg = f => U.sum(rs, f) / rs.length;
+  const st = rs.flatMap(r => r.stints);
+  const ended = st.filter(s => s.closed);
+  const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '-';
+  const roleY = k => avg(r => r.byRole[k] || 0).toFixed(1);
+  const rows = [
+    ['本数', rs.length], ['1 本あたりの時間（秒）', (ms / rs.length / 1000).toFixed(1)], ['1 年あたりの時間（秒）', (ms / U.sum(rs, r => r.playerYears + r.jobYears || 1) / 1000).toFixed(2)],
+    ['現役の年数', avg(r => r.playerYears).toFixed(1)], ['一軍にいた年数', avg(r => r.firstYears).toFixed(1)], ['引退した歳', avg(r => r.playEndAge || 0).toFixed(1)], ['功績（0〜1）', avg(r => r.merit).toFixed(2)], ['一軍に 3 年以上いた人の割合', pct(rs.filter(r => r.firstYears >= 3).length, rs.length)],
+    ['仕事の年数', avg(r => r.jobYears).toFixed(1)], ['　監督', roleY('manager')], ['　コーチ', roleY('coach')], ['　GM', roleY('gm')], ['渡り歩いた球団', avg(r => r.teams).toFixed(1)], ['届いた話：監督・コーチ・GM', ['manager', 'coach', 'gm'].map(k => OFFERED[k] || 0).join('・')],
+    ['解任の回数', avg(r => r.fired).toFixed(1)], ['1 つの仕事の平均年数', st.length ? (U.sum(st, s => s.y) / st.length).toFixed(1) : '-'], ['仕事の終わりのうち解任', pct(ended.filter(s => /解任/.test(s.end)).length, ended.length)],
+    ['ノルマの達成率', pct(U.sum(rs, r => r.ok), U.sum(rs, r => r.jobYears))], ['日本一（仕事で）', avg(r => r.jp).toFixed(2)], ['球界を去った歳', avg(r => r.endAge || 0).toFixed(1)],
+    ['スコア 平均（億円）', (avg(r => r.earned) / 10000).toFixed(1)], ['スコア 最低〜最高（億円）', (Math.min(...rs.map(r => r.earned)) / 10000).toFixed(1) + '〜' + (Math.max(...rs.map(r => r.earned)) / 10000).toFixed(1)],
+    ['　うち現役（億円）', (avg(r => r.earnedPlayer) / 10000).toFixed(1)], ['　うち仕事（億円）', (avg(r => r.earnedJob) / 10000).toFixed(1)], ['終わりの球団の資金の平均（億円）', (avg(r => r.moneyAvg) / 10000).toFixed(1)], ['終わりの球団の資金の最低（億円）', (avg(r => r.moneyMin) / 10000).toFixed(1)],
+  ];
+  return rows;
+}
+window.runLives = function (n, games, onProgress) {
+  return new Promise((res, rej) => {
+    const rs = []; const t0 = performance.now();
+    const step = () => {
+      try { rs.push(botLife(games)); } catch (e) { rej(e); return; }
+      if (onProgress) onProgress(rs.length);
+      if (rs.length >= n) { const r = report(rs, performance.now() - t0); window.LAST = { rs, rows: r }; res(r); }
+      else setTimeout(step, 0);
+    };
+    setTimeout(step, 0);
+  });
+};
+document.getElementById('go').onclick = async () => {
+  const st = document.getElementById('st');
+  const n = +document.getElementById('n').value, g = +document.getElementById('g').value;
+  try {
+    const rows = await runLives(n, g, k => { st.textContent = `${k}/${n} 本`; });
+    document.getElementById('out').innerHTML = `<table>${rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('')}</table>`;
+  } catch (e) { st.textContent = 'エラー：' + e.stack; }
+};
+</script>
+</body>
+</html>
