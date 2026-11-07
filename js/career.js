@@ -37,11 +37,12 @@ const TACTIC_STEAL = { 控えめ: 0.5, 普通: 1, 積極: 1.6 };
 const TACTIC_HOOK = { 早め: 0.8, 普通: 1, 粘る: 1.15 };
 const REQUESTS = { '': '要望なし', 投手: '投手を補強してほしい', 野手: '野手を補強してほしい', 若手: 'ドラフトは若手を', };
 const ME_POT = 0.08, ME_POT_MIN = 0.8, ME_Q = 4;
-// 代表の監督・コーチ。引退した人から功績で選ぶ。監督は専任で、大会の前の年のオフに打診が来る。コーチは大会の年に選ばれ、球団の仕事と兼ねられる
+// 代表の監督・コーチ。選手として代表に選ばれたことがある人から、功績で選ぶ（人の言葉）。監督は専任で、大会の前の年のオフに打診が来る。コーチは大会の年に選ばれ、球団の仕事と兼ねられる
 const NATIONAL_NAME = '侍ジャパン';
 const NAT_W = { merit: 40, rep: 0.6, jp: 5 }, NAT_JP_MAX = 3; // 選考の点：現役の功績・評判・日本一（仕事で）の重み
 const NAT_LINE = { manager: 60, coach: 35 }, NAT_CHANCE = 0.7, NAT_AGE = 70; // この点を超えると、この確率で話が来る。この歳からは選ばれない
 const NAT_PAY = { manager: 8000, coach: 1000 }; // 報酬（万円）。優勝すると同じ額のボーナス。監督は専任なので高い
+const NAT_FAME = { pay: { manager: 1.3, coach: 1.1 }, champ: 0.1, champMax: 2, extra: { manager: 0.35, coach: 0.12 }, jobMul: 0.5 }; // 代表の経験のあとの監督の話：年俸の倍率、優勝 1 回で足す倍率と数える上限、席が空いていない球団から話が来る確率、仕事があるときに掛ける割合
 const NAT_REP = { 優勝: 8, 準優勝: 3, ベスト4: 0, '1次リーグ敗退': -3 }, NAT_REP_COACH = 0.5; // 大会の結果で変わる評判。コーチはこの割合
 const KIND_START = { 高校: { age: 18, q: [34, 46], pot: 0.08 }, 大学: { age: 22, q: [42, 54], pot: 0 }, 社会人: { age: 24, q: [46, 58], pot: 0 } };
 
@@ -408,6 +409,7 @@ function careerRetire(p) {
 // 引退した選手のうち、名を残した人と元同僚は、のちに指導者の候補になる
 function noteStaffCandidate(p, notable) {
   const me = S.me;
+  noteNationalAlumni(p);
   if (!me || !S.staffPool) return;
   const mate = me.mates && me.mates[p.id] != null;
   if (!notable && !mate) return;
@@ -455,9 +457,15 @@ function fillVacancies() {
   S.vacancies = [];
 }
 
+// 代表の経験（監督をやったか、コーチまでか）と優勝の回数
+function natFame() {
+  const list = S.me.natLog || [];
+  if (!list.length) return null;
+  return { kind: list.some(n => n.title === '監督') ? 'manager' : 'coach', champ: Math.min(list.filter(n => n.result === '優勝').length, NAT_FAME.champMax) };
+}
 function offerFor(teamId, role, extra) {
-  const me = S.me, t = S.teams[teamId];
-  const base = ROLES[role].base * (0.6 + me.rep / 100) * (0.7 + t.pop / 100);
+  const me = S.me, t = S.teams[teamId], fame = role === 'manager' ? natFame() : null;
+  const base = ROLES[role].base * (0.6 + me.rep / 100) * (0.7 + t.pop / 100) * (fame ? NAT_FAME.pay[fame.kind] + fame.champ * NAT_FAME.champ : 1);
   return { teamId, role, title: roleTitle(role, me.rep), base: Math.round(base / 10) * 10, ...(extra || {}) };
 }
 
@@ -473,6 +481,14 @@ function makeOffers() {
     let chance = U.clamp(0.25 + score / 50, 0.02, 0.95);
     if (j) chance *= j.trust >= 50 ? 0.5 : 0.25;
     if (U.chance(chance)) out.push(offerFor(v.teamId, v.role));
+  });
+  // 代表の経験があると、監督の席が空いていない球団からも話が来る
+  const fame = natFame();
+  if (fame && myAge() < RENEW_AGE) S.teams.forEach(t => {
+    if (out.some(o => o.teamId === t.id && o.role === 'manager')) return;
+    if (j && j.teamId === t.id && j.role === 'manager') return;
+    if (last && last.teamId === t.id && /解任/.test(last.reason) && last.y === S.year) return;
+    if (U.chance(NAT_FAME.extra[fame.kind] * (j ? NAT_FAME.jobMul : 1))) out.push(offerFor(t.id, 'manager', { natFame: true }));
   });
   out.sort((a, b) => b.base - a.base);
   out.length = Math.min(out.length, OFFER_MAX);
@@ -496,18 +512,37 @@ function nationalScore() {
   const me = S.me, jp = Math.min(me.log.filter(r => r.jp).length, NAT_JP_MAX);
   return me.merit * NAT_W.merit + me.rep * NAT_W.rep + jp * NAT_W.jp;
 }
-// コーチの席に自分が選ばれなかったら、12 球団の同じ役職でいちばん評判の高い人が務める
-function nationalPick(role) {
-  const list = S.teams.map(t => S.staff[t.id] && S.staff[t.id][role]).filter(s => s && !s.me).sort((a, b) => b.rep - a.rep);
-  return { name: list[0] ? list[0].name : makeName() };
+// 自分が代表の選手に選ばれた回数
+function natPlayerCount() {
+  const me = S.me, p = mePlayer();
+  if (p) return p.jp || 0;
+  const row = me.card && (me.card.honors || []).find(x => /^日本代表×/.test(x));
+  return row ? +row.split('×')[1] : 0;
 }
-// 代表の監督は専任なので、球団の席にいない人（名を残した引退選手）から選ぶ
-function nationalManagerPick() {
-  const pool = S.staffPool || [];
-  return { name: pool.length ? U.pick(pool).name : makeName() };
+// 代表の監督・コーチになれるのは、代表の選手だった人だけ。引退した代表選手を覚えておく
+function noteNationalAlumni(p) {
+  if (!p.jp) return;
+  if (!S.natPool) S.natPool = [];
+  S.natPool.push({ name: p.name, isP: !!p.isP });
+  if (S.natPool.length > 60) S.natPool.shift();
+}
+// 自分が選ばれなかった席。まだ引退した代表選手がいない最初のうちは、始まる前の時代の代表選手として名前を作る
+function nationalPick(side, used) {
+  const list = (S.natPool || []).filter(x => !used.includes(x.name) && (!side || x.isP === (side === 'pit')));
+  const name = list.length ? U.pick(list).name : makeName();
+  used.push(name);
+  return { name };
+}
+// 選手として代表に選ばれたとき
+function careerNationalPicked(players) {
+  const me = S.me;
+  if (!me || !players.some(isMe)) return;
+  lifeEvent(`${NATIONAL_NAME}に選手として選ばれる`, 'nat');
+  me.notices.push({ title: `🎌 ${NATIONAL_NAME}`, text: `${NATIONAL_NAME}に選手として選ばれました。`, sub: '代表の経験がある人だけが、のちに代表の監督・コーチになれます。', timeline: true });
 }
 function selectNationalStaff() {
-  const me = S.me, staff = { manager: nationalManagerPick(), pcoach: nationalPick('pcoach'), bcoach: nationalPick('bcoach') };
+  const me = S.me, used = [];
+  const staff = { manager: nationalPick(null, used), pcoach: nationalPick('pit', used), bcoach: nationalPick('bat', used) };
   if (!me) return staff;
   if (me.natDuty && me.natDuty.y === S.year) {
     staff.manager = { name: me.name, me: true };
@@ -515,7 +550,7 @@ function selectNationalStaff() {
     return staff;
   }
   if (me.phase === 'player' || !me.card || me.ended || myAge() >= NAT_AGE) return staff;
-  if (nationalScore() < NAT_LINE.coach || !U.chance(NAT_CHANCE)) return staff;
+  if (!natPlayerCount() || nationalScore() < NAT_LINE.coach || !U.chance(NAT_CHANCE)) return staff;
   const role = myCoachRole(), title = ROLES[role].name;
   staff[role] = { name: me.name, me: true };
   me.national = { y: S.year, role, title };
@@ -527,7 +562,7 @@ function selectNationalStaff() {
 // 代表の監督の打診。大会の前の年のオフに、点が届いた人へ来る
 function makeNationalOffer() {
   const me = S.me, y = S.year + 1;
-  if (me.phase === 'player' || !me.card || me.ended || me.natDuty || y % INTL_EVERY !== 0 || myAge() + 1 >= NAT_AGE) return null;
+  if (me.phase === 'player' || !me.card || !natPlayerCount() || me.ended || me.natDuty || y % INTL_EVERY !== 0 || myAge() + 1 >= NAT_AGE) return null;
   return nationalScore() >= NAT_LINE.manager && U.chance(NAT_CHANCE) ? { y } : null;
 }
 // 打診を受ける：球団の仕事を辞めて、大会まで代表に専念する

@@ -77,7 +77,7 @@ function renderOffers() {
     ${me.offers.map((o, i) => {
     const t = S.teams[o.teamId];
     const w = OWNER_TYPES[t.owner.type];
-    const tag = o.renew ? '<span class="tag">続投</span>' : o.hero ? '<span class="tag">古巣から</span>' : (me.ties[t.short] ? `<span class="tag">縁あり ${me.ties[t.short]}年</span>` : '');
+    const tag = o.renew ? '<span class="tag">続投</span>' : o.hero ? '<span class="tag">古巣から</span>' : o.natFame ? `<span class="tag">${NATIONAL_NAME}の実績で</span>` : (me.ties[t.short] ? `<span class="tag">縁あり ${me.ties[t.short]}年</span>` : '');
     return `<div class="offer" style="--c:${t.color}"><h3>${h(t.name)}の${h(o.title)} ${tag}</h3>
       <div class="muted small">オーナー：${w.name}・我慢強さ ${'★'.repeat(t.owner.patience)} ／ 人気 ${Math.round(t.pop)} ／ 今季 ${LEAGUE_NAME[t.lg]}${rankOf(t.id)}位 ／ 戦力の見立て ${strengthRank(t)}位</div>
       <div class="pkgs">${packagesOf(o).map((pk, p) => `<div class="pkg"><b>${pk.name}</b>：${pk.years}年・年俸 ${U.money(pk.salary)}<br><span class="muted">${pk.desc}</span>
@@ -172,6 +172,7 @@ function renderCareer() {
       <div><small>スコア（これまでの収入）</small><b>${U.money(me.earned)}</b></div>
       <div><small>うち現役／仕事</small>${U.money(me.earnedPlayer || 0)} ／ ${U.money(me.earnedJob || 0)}</div>
       <div><small>解任された回数</small>${me.fired}回</div>
+      <div><small>${NATIONAL_NAME}（選手）</small>${natPlayerCount()}回</div>
       ${me.phase === 'free' && !me.natDuty ? `<div><small>無職の年数</small>${me.jobless}年（${JOBLESS_END}年話がないと引退）</div>` : ''}
     </div></section>`;
   let main = '';

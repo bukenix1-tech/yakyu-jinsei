@@ -878,6 +878,7 @@ function offIntl() {
   const rest = U.shuffle(countries.slice(1));
   const groups = [[countries[0], ...rest.slice(0, 3)], rest.slice(3)];
   const jpPs = japan.map(x => S.players[x.pid]);
+  careerNationalPicked(jpPs);
   const saved = jpPs.map(p => ({ stats: p.stats, rest: p.rest, fatigue: p.fatigue, role: p.role, cond: p.cond }));
   const pts = {}, games = [];
   const play = (stage, a, b) => {
