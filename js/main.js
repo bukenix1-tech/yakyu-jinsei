@@ -313,7 +313,15 @@ const ACTIONS = {
   saveNow() { closeModal(); UI.toast = saveGameNow() ? `スロット${currentSlot}に保存しました。` : '保存できませんでした。'; },
   toTitle() { saveGameNow(); closeModal(); S = null; currentSlot = null; },
   // ---------- 人生 ----------
-  lifeYear() { UI.lifeMsg = lifeStep(); UI.tab = S.me.job ? 'off' : 'career'; window.scrollTo(0, 0); },
+  acceptNational() {
+    if (!confirm(S.me.job ? `${NATIONAL_NAME}の監督を受けますか？ いまの球団の仕事は辞めることになります。` : `${NATIONAL_NAME}の監督を受けますか？`)) return 'keep';
+    acceptNational();
+    careerNext();
+    UI.tab = 'career';
+    window.scrollTo(0, 0);
+  },
+  declineNational() { S.me.natOffer = null; },
+  lifeYear() { S.me.natOffer = null; UI.lifeMsg = lifeStep(); UI.tab = S.me.job || UI.lifeMsg === 'intl' ? 'off' : 'career'; window.scrollTo(0, 0); },
   lifeRetire() {
     let guard = 0, r = 'year';
     while (S.me.phase === 'player' && guard++ < 40 && r === 'year') { r = lifeStep(); S.me.notices = []; }
@@ -329,7 +337,7 @@ const ACTIONS = {
   },
   declineOffers() {
     if (!confirm(S.me.job ? '話をすべて断って、いまの仕事を続けますか？' : '話をすべて断って、1 年待ちますか？')) return 'keep';
-    S.me.offers = [];
+    S.me.offers = []; S.me.natOffer = null;
     if (!S.me.job) lifeStep();
     UI.tab = S.me.job ? 'off' : 'career';
   },

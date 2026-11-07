@@ -60,10 +60,20 @@ function renderJobCard() {
   ${renderStaff()}`;
 }
 
+// 代表の監督の打診
+function renderNatOffer() {
+  const me = S.me, o = me.natOffer;
+  if (!o) return '';
+  return `<section class="card"><h2>🎌 ${NATIONAL_NAME}の監督の打診</h2>
+    <p>${o.y}年の国際大会まで、代表の監督に専念してほしいという話です。${me.job ? '<b>いまの球団の仕事は辞めることになります。</b>' : ''}</p>
+    <p class="muted small">報酬 ${U.money(NAT_PAY.manager)}（優勝すると倍）。大会のあとは、また球団の話を待ちます。ほかの話を受けると、この話は流れます。</p>
+    <p><button class="primary" data-act="acceptNational">受ける</button> <button data-act="declineNational">断る</button></p></section>`;
+}
+
 function renderOffers() {
-  const me = S.me;
-  if (!me.offers.length) return '';
-  return `<section class="card"><h2>📨 届いた話</h2>
+  const me = S.me, nat = renderNatOffer();
+  if (!me.offers.length) return nat;
+  return `${nat}<section class="card"><h2>📨 届いた話</h2>
     ${me.offers.map((o, i) => {
     const t = S.teams[o.teamId];
     const w = OWNER_TYPES[t.owner.type];
@@ -77,11 +87,30 @@ function renderOffers() {
   </section>`;
 }
 
+// 国際大会の画面に出す、代表の監督・コーチ
+function renderNationalStaff(I) {
+  if (!I.staff) return '';
+  const rows = ['manager', 'pcoach', 'bcoach'].map(r => {
+    const s = I.staff[r];
+    return `<tr class="${s.me ? 'me' : ''}"><th>${ROLES[r].name}</th><td class="l">${h(s.name)}${s.me ? '（じぶん）' : ''}</td></tr>`;
+  }).join('');
+  return `<h3>${NATIONAL_NAME}の監督・コーチ</h3><table class="tbl">${rows}</table>`;
+}
+// 代表の経歴
+function renderNatLog() {
+  const hide = pbpUnseenKind('intl'); // 決勝を見るまで、今年の結果は出さない
+  const list = (S.me.natLog || []).filter(n => !(hide && n.y === S.year));
+  if (!list.length) return '';
+  return `<section class="card"><h2>🎌 ${NATIONAL_NAME}の経歴</h2><div class="scroll"><table class="tbl"><tr><th>年</th><th>仕事</th><th>結果</th><th>報酬</th></tr>
+    ${list.slice().reverse().map(n => `<tr><td>${n.y}</td><td>${h(n.title)}</td><td>${h(n.result)}</td><td>${U.money(n.pay)}</td></tr>`).join('')}</table></div></section>`;
+}
+
 // 自分年表：できごとと、年ごとの成績を 1 本に並べる。n を渡すと新しいほうから n 件だけ
 const TL_ORDER = { move: 0, out: 0, retire: 0, job: 0, fired: 0, end: 0, season: 1 }; // 同じ年の中の並び（オフのできごと → 成績 → その年の記録）
 function timelineItems() {
   const me = S.me, items = [];
-  (me.events || []).forEach(e => items.push({ ...e }));
+  const hideNat = pbpUnseenKind('intl'); // 決勝を見るまで、代表の結果を年表で明かさない
+  (me.events || []).forEach(e => { if (!(hideNat && e.kind === 'nat' && e.y === S.year && /国際大会/.test(e.text))) items.push({ ...e }); });
   me.diary.forEach(d => {
     const line = d.first ? [d.pit, d.bat].filter(Boolean).join(' ／ ') : '二軍（一軍の出場なし）';
     items.push({ y: d.y, age: d.age, kind: 'season', chip: d.team, color: d.color, text: `${line} ・ 総合${d.ovr} ・ 年俸${U.money(d.salary)}` });
@@ -143,7 +172,7 @@ function renderCareer() {
       <div><small>スコア（これまでの収入）</small><b>${U.money(me.earned)}</b></div>
       <div><small>うち現役／仕事</small>${U.money(me.earnedPlayer || 0)} ／ ${U.money(me.earnedJob || 0)}</div>
       <div><small>解任された回数</small>${me.fired}回</div>
-      ${me.phase === 'free' ? `<div><small>無職の年数</small>${me.jobless}年（${JOBLESS_END}年話がないと引退）</div>` : ''}
+      ${me.phase === 'free' && !me.natDuty ? `<div><small>無職の年数</small>${me.jobless}年（${JOBLESS_END}年話がないと引退）</div>` : ''}
     </div></section>`;
   let main = '';
   if (me.phase === 'player' && p) {
@@ -154,6 +183,9 @@ function renderCareer() {
       <div class="pc-abil">${abilSum(p)}</div>
       ${p.stats.g || p.stats.pg ? `<p class="muted">今季：${h(statLine(p))}</p>` : ''}
       <p><button class="primary big" data-act="lifeYear">次の 1 年へ ▶</button> <button data-act="lifeRetire">引退まで飛ばす ⏭</button></p></section>`;
+  } else if (me.natDuty) {
+    main = `<section class="card"><h2>🎌 ${NATIONAL_NAME}の監督</h2><p>${me.natDuty.y}年の国際大会に向けて、代表に専念しています。</p>
+      <p><button class="primary big" data-act="lifeYear">${S.phase === 'off' ? '次のシーズンへ ▶' : '国際大会へ ▶'}</button></p></section>`;
   } else if (me.phase === 'free') {
     const v = me.verdict;
     main = `${v ? `<div class="verdict ${v.kind === 'fired' ? 'fired' : ''}">${h(v.text)}</div>` : ''}
@@ -164,7 +196,7 @@ function renderCareer() {
   } else {
     main = renderJobCard();
   }
-  return head + main + renderTimeline() + renderJobLog() + renderDiary() + `<section class="card"><h2>ニュース</h2>${newsList(10)}</section>`;
+  return head + main + renderTimeline() + renderNatLog() + renderJobLog() + renderDiary() + `<section class="card"><h2>ニュース</h2>${newsList(10)}</section>`;
 }
 
 // いまの球団のスタッフ
@@ -245,5 +277,5 @@ function renderResume() {
       </div>
       <p><button data-act="toTitle">タイトルへ戻る</button></p>
     </section>
-    ${renderTimeline()}${renderJobLog()}${renderDiary()}</div>`;
+    ${renderTimeline()}${renderNatLog()}${renderJobLog()}${renderDiary()}</div>`;
 }

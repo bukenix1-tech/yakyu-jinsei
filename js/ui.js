@@ -139,7 +139,7 @@ function render() {
   const app = document.getElementById('app');
   if (!S) { app.innerHTML = renderTitle() + (UI.toast ? `<div class="toast">${h(UI.toast)}</div>` : ''); UI.toast = ''; return; }
   if (S.me.ended) { app.innerHTML = renderResume() + (UI.toast ? `<div class="toast">${h(UI.toast)}</div>` : ''); UI.toast = ''; return; }
-  const free = !S.me.job;
+  const free = !S.me.job && !(S.phase === 'off' && S.off.step === 'intl' && S.me.national); // 代表として出る大会は、仕事がなくても大会の画面を見せる
   const first = free ? ['career', 'じぶん'] : S.phase === 'off' ? ['off', 'オフシーズン'] : S.phase === 'post' ? ['post', 'ポストシーズン'] : TABS[0];
   const tabs = [first, ...(free ? [] : [['career', 'じぶん']]), ...TABS.slice(1).filter(([k]) => tabAllowed(k))];
   if (['home', 'off', 'post'].includes(UI.tab) || !tabs.some(([k]) => k === UI.tab)) UI.tab = first[0];
@@ -1190,6 +1190,7 @@ function renderIntl(I) {
     <h3>決勝トーナメント</h3><div class="scroll"><table class="tbl">${gHead}${I.games.filter(g => g.stage !== '1次リーグ' && !(hideFinal && g.stage === '決勝')).map(gRow).join('')}</table></div>
     <h3>1次リーグ</h3><div class="grid2">${I.table.map(groupTbl).join('')}</div>
     <details><summary>1次リーグの全試合</summary><div class="scroll"><table class="tbl">${gHead}${I.games.filter(g => g.stage === '1次リーグ').map(gRow).join('')}</table></div></details>
+    ${renderNationalStaff(I)}
     <h3>日本代表（${I.japan.length}人）</h3><p class="muted small">12 球団の日本人選手から、能力で自動で選ばれました。出た選手は人気が上がります（優勝するとさらに）。</p>
     <div class="grid2"><div><h4>野手</h4><table class="tbl">${I.japan.filter(x => !x.P).map(jpRow).join('')}</table></div><div><h4>投手</h4><table class="tbl">${I.japan.filter(x => x.P).map(jpRow).join('')}</table></div></div>
     <button class="primary big" data-act="offNext">査定へ ▶</button></section>`;
@@ -1215,8 +1216,8 @@ function recIntl() {
   if (!H.length) return note;
   const shown = H.filter(y => !(y.y === S.year && pbpUnseenKind('intl')));
   if (!shown.length) return note;
-  return `${note}<div class="scroll"><table class="tbl"><tr><th>年</th><th>優勝</th><th>日本</th><th>大会MVP</th></tr>
-    ${shown.map(y => `<tr><td>${y.y}</td><td class="l">${y.champ === '日本' ? '🏆 ' : ''}${h(y.champ)}</td><td class="l">${h(y.jp)}<span class="muted">（${y.w}勝${y.l}敗）</span></td><td class="l">${y.mvp ? `${h(y.mvp[0])}<span class="muted">（${h(y.mvp[1])}）</span>` : '-'}</td></tr>`).join('')}</table></div>`;
+  return `${note}<div class="scroll"><table class="tbl"><tr><th>年</th><th>優勝</th><th>日本</th><th>監督</th><th>大会MVP</th></tr>
+    ${shown.map(y => `<tr><td>${y.y}</td><td class="l">${y.champ === '日本' ? '🏆 ' : ''}${h(y.champ)}</td><td class="l">${h(y.jp)}<span class="muted">（${y.w}勝${y.l}敗）</span></td><td class="l">${h(y.mgr || '-')}</td><td class="l">${y.mvp ? `${h(y.mvp[0])}<span class="muted">（${h(y.mvp[1])}）</span>` : '-'}</td></tr>`).join('')}</table></div>`;
 }
 
 // オールスター：今年の出場選手と、歴代の結果・MVP（守る位置の順に並べる）

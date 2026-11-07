@@ -870,6 +870,7 @@ function intlTeam(name, ids, i, gi) {
 
 // 国際大会をまるごと行う（オフの表彰のあと）
 function offIntl() {
+  const natStaff = selectNationalStaff();
   const japan = selectJapan();
   const base = U.sum(japan, x => ovr(S.players[x.pid])) / japan.length;
   const countries = [{ name: '日本', ids: japan.map(x => x.pid), jp: true }, ...INTL_COUNTRIES.map(c => ({ name: c.name, ids: intlRoster(c, base) }))];
@@ -917,9 +918,9 @@ function offIntl() {
   const mvp = mvpP ? { name: mvpP.name, team: champ.jp ? `日本・${S.teams[mvpP.teamId].short}` : champ.name, pid: champ.jp ? mvpP.id : null } : null;
   if (mvpP && champ.jp) { addFame(mvpP, INTL_FAME.mvp); mvpP.intlMvp = (mvpP.intlMvp || 0) + 1; }
   countries.slice(1).forEach(c => c.ids.forEach(id => { delete S.players[id]; }));
-  S.off.intl = { year: S.year, japan, table, games, champ: champ.name, jp: jpResult, mvp };
+  S.off.intl = { year: S.year, japan, table, games, champ: champ.name, jp: jpResult, mvp, staff: natStaff };
   if (!S.intlHist) S.intlHist = [];
-  S.intlHist.unshift({ y: S.year, champ: champ.name, jp: jpResult, w: U.sum(reached, g => (g.away === jpName ? g.score[0] > g.score[1] : g.score[1] > g.score[0]) ? 1 : 0), l: U.sum(reached, g => (g.away === jpName ? g.score[0] < g.score[1] : g.score[1] < g.score[0]) ? 1 : 0), mvp: mvp ? [mvp.name, mvp.team] : null });
+  S.intlHist.unshift({ y: S.year, champ: champ.name, jp: jpResult, w: U.sum(reached, g => (g.away === jpName ? g.score[0] > g.score[1] : g.score[1] > g.score[0]) ? 1 : 0), l: U.sum(reached, g => (g.away === jpName ? g.score[0] < g.score[1] : g.score[1] < g.score[0]) ? 1 : 0), mvp: mvp ? [mvp.name, mvp.team] : null, mgr: natStaff.manager.name });
   const mine = japan.filter(x => S.players[x.pid].teamId === S.myTeamId).map(x => x.name);
   const fi = (S.pbp || []).findIndex(g => g.kind === 'intl');
   const n = addNews(`国際大会：${champ.name}が優勝！ 日本は${jpResult}。${mvp ? `MVP は${mvp.name}（${mvp.team}）。` : ''}`, champ.jp ? 'big' : '');

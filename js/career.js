@@ -37,6 +37,12 @@ const TACTIC_STEAL = { 控えめ: 0.5, 普通: 1, 積極: 1.6 };
 const TACTIC_HOOK = { 早め: 0.8, 普通: 1, 粘る: 1.15 };
 const REQUESTS = { '': '要望なし', 投手: '投手を補強してほしい', 野手: '野手を補強してほしい', 若手: 'ドラフトは若手を', };
 const ME_POT = 0.08, ME_POT_MIN = 0.8, ME_Q = 4;
+// 代表の監督・コーチ。引退した人から功績で選ぶ。監督は専任で、大会の前の年のオフに打診が来る。コーチは大会の年に選ばれ、球団の仕事と兼ねられる
+const NATIONAL_NAME = '侍ジャパン';
+const NAT_W = { merit: 40, rep: 0.6, jp: 5 }, NAT_JP_MAX = 3; // 選考の点：現役の功績・評判・日本一（仕事で）の重み
+const NAT_LINE = { manager: 60, coach: 35 }, NAT_CHANCE = 0.7, NAT_AGE = 70; // この点を超えると、この確率で話が来る。この歳からは選ばれない
+const NAT_PAY = { manager: 8000, coach: 1000 }; // 報酬（万円）。優勝すると同じ額のボーナス。監督は専任なので高い
+const NAT_REP = { 優勝: 8, 準優勝: 3, ベスト4: 0, '1次リーグ敗退': -3 }, NAT_REP_COACH = 0.5; // 大会の結果で変わる評判。コーチはこの割合
 const KIND_START = { 高校: { age: 18, q: [34, 46], pot: 0.08 }, 大学: { age: 22, q: [42, 54], pot: 0 }, 社会人: { age: 24, q: [46, 58], pot: 0 } };
 
 function hasControl(k) { const m = S.me; return !!(m && m.job && !m.bot && ROLES[m.job.role].can === k); }
@@ -59,6 +65,7 @@ function roleTitle(role, rep) {
 function careerLabel() {
   const m = S.me;
   if (m.ended) return '引退';
+  if (m.natDuty) return `${NATIONAL_NAME}の監督`;
   if (m.job) return `${S.teams[m.job.teamId].short}の${m.job.title}`;
   if (m.phase !== 'player') return '無職';
   const p = mePlayer();
@@ -66,7 +73,7 @@ function careerLabel() {
 }
 
 // ---------- 年表 ----------
-const LIFE_ICON = { start: '🎉', debut: '⚾', title: '🏆', move: '🔁', out: '📄', hurt: '🩹', money: '💰', mile: '🎖️', retire: '👋', job: '🤝', fired: '📰', champ: '👑', end: '📜' };
+const LIFE_ICON = { start: '🎉', debut: '⚾', title: '🏆', move: '🔁', out: '📄', hurt: '🩹', money: '💰', mile: '🎖️', retire: '👋', job: '🤝', fired: '📰', champ: '👑', end: '📜', nat: '🎌' };
 function lifeEvent(text, kind) {
   const me = S.me;
   if (!me.events) me.events = [];
@@ -484,10 +491,80 @@ function makeRetireOffers() {
   return out;
 }
 
+// ---------- 代表の監督・コーチ ----------
+function nationalScore() {
+  const me = S.me, jp = Math.min(me.log.filter(r => r.jp).length, NAT_JP_MAX);
+  return me.merit * NAT_W.merit + me.rep * NAT_W.rep + jp * NAT_W.jp;
+}
+// コーチの席に自分が選ばれなかったら、12 球団の同じ役職でいちばん評判の高い人が務める
+function nationalPick(role) {
+  const list = S.teams.map(t => S.staff[t.id] && S.staff[t.id][role]).filter(s => s && !s.me).sort((a, b) => b.rep - a.rep);
+  return { name: list[0] ? list[0].name : makeName() };
+}
+// 代表の監督は専任なので、球団の席にいない人（名を残した引退選手）から選ぶ
+function nationalManagerPick() {
+  const pool = S.staffPool || [];
+  return { name: pool.length ? U.pick(pool).name : makeName() };
+}
+function selectNationalStaff() {
+  const me = S.me, staff = { manager: nationalManagerPick(), pcoach: nationalPick('pcoach'), bcoach: nationalPick('bcoach') };
+  if (!me) return staff;
+  if (me.natDuty && me.natDuty.y === S.year) {
+    staff.manager = { name: me.name, me: true };
+    me.national = { y: S.year, role: 'manager', title: '監督' };
+    return staff;
+  }
+  if (me.phase === 'player' || !me.card || me.ended || myAge() >= NAT_AGE) return staff;
+  if (nationalScore() < NAT_LINE.coach || !U.chance(NAT_CHANCE)) return staff;
+  const role = myCoachRole(), title = ROLES[role].name;
+  staff[role] = { name: me.name, me: true };
+  me.national = { y: S.year, role, title };
+  lifeEvent(`${NATIONAL_NAME}の${title}に選ばれる`, 'nat');
+  addNews(`${me.name}が${NATIONAL_NAME}の${title}に選ばれました。`, 'big');
+  me.notices.push({ title: `🎌 ${NATIONAL_NAME}`, text: `${NATIONAL_NAME}の${title}に選ばれました。`, sub: me.job ? 'これまでの功績が認められました。球団の仕事はそのまま続けられます。' : 'これまでの功績が認められました。', timeline: true });
+  return staff;
+}
+// 代表の監督の打診。大会の前の年のオフに、点が届いた人へ来る
+function makeNationalOffer() {
+  const me = S.me, y = S.year + 1;
+  if (me.phase === 'player' || !me.card || me.ended || me.natDuty || y % INTL_EVERY !== 0 || myAge() + 1 >= NAT_AGE) return null;
+  return nationalScore() >= NAT_LINE.manager && U.chance(NAT_CHANCE) ? { y } : null;
+}
+// 打診を受ける：球団の仕事を辞めて、大会まで代表に専念する
+function acceptNational() {
+  const me = S.me, o = me.natOffer;
+  if (!o) return;
+  if (me.job) leaveJob('代表監督就任のため退任');
+  me.offers = []; me.natOffer = null; me.verdict = null;
+  me.natDuty = { y: o.y };
+  me.phase = 'free'; me.jobless = 0;
+  lifeEvent(`${NATIONAL_NAME}の監督に就任（${o.y}年の国際大会まで専任）`, 'nat');
+  addNews(`${me.name}が${NATIONAL_NAME}の監督に就任しました。`, 'big');
+}
+// 大会の結果を受け取る（決勝の結果を隠している画面の先、査定の始まりで）
+function settleNational() {
+  const me = S.me, n = me.national, I = S.off.intl;
+  if (me.natDuty && me.natDuty.y <= S.year) me.natDuty = null;
+  if (!n) return;
+  me.national = null;
+  if (!I || I.year !== n.y) return;
+  const coach = n.role !== 'manager';
+  const repGain = (NAT_REP[I.jp] || 0) * (coach ? NAT_REP_COACH : 1);
+  const pay = NAT_PAY[coach ? 'coach' : 'manager'];
+  const total = pay * (I.jp === '優勝' ? 2 : 1);
+  me.rep = U.clamp(me.rep + repGain, 0, 100);
+  earn(total, 'job');
+  if (!me.natLog) me.natLog = [];
+  me.natLog.push({ y: n.y, title: n.title, result: I.jp, pay: total });
+  lifeEvent(`${NATIONAL_NAME}の${n.title}として国際大会 ${I.jp}（報酬 ${U.money(total)}）`, 'nat');
+}
+
 function careerReviewStart() {
   S.off.step = 'review';
   if (S.off.reviewed) return;
   S.off.reviewed = true;
+  const wasDuty = !!S.me.natDuty;
+  settleNational();
   staffTurnover();
   ownerTurnover();
   const me = S.me;
@@ -504,13 +581,14 @@ function careerReviewStart() {
     } else {
       me.verdict = { kind: 'stay', text: `契約は残り${j.yearsLeft}年。来季も続投です。` };
     }
-  } else if (me.phase === 'free') {
+  } else if (me.phase === 'free' && !wasDuty) {
     me.jobless++;
     me.rep = U.clamp(me.rep + REP_JOBLESS, 0, 100);
   }
   if (me.lastLeft) me.lastLeft.y = S.year;
   me.offers = me.phase === 'player' ? [] : makeOffers();
-  if (me.phase === 'free' && !me.offers.length && (me.jobless >= JOBLESS_END || myAge() >= AGE_END)) careerEnd(`${JOBLESS_END}年待っても、話は来ませんでした。`);
+  me.natOffer = makeNationalOffer();
+  if (me.phase === 'free' && !me.offers.length && !me.natOffer && (me.jobless >= JOBLESS_END || myAge() >= AGE_END)) careerEnd(`${JOBLESS_END}年待っても、話は来ませんでした。`);
   if (myAge() >= AGE_END) careerEnd('長い野球人生に幕を下ろしました。');
 }
 
@@ -522,6 +600,7 @@ function acceptOffer(i, pkIdx) {
   const me = S.me, o = me.offers[i];
   if (!o) return;
   const pk = packagesOf(o)[pkIdx];
+  me.natOffer = null; // 球団の話を受けると、代表の打診は流れる
   const same = me.job && me.job.teamId === o.teamId && me.job.role === o.role;
   const keepTrust = same ? me.job.trust : null, keepYears = same ? me.job.years : 0;
   if (me.job && !same) leaveJob('引き抜き');
@@ -609,9 +688,11 @@ function lifeStep() {
   if (me.ended || me.job) return me.ended ? 'end' : 'job';
   if (S.phase !== 'off') runSeasonAuto();
   if (S.phase !== 'off') return 'stuck';
+  if (S.off.step === 'awards' && intlYear() && !S.off.intl) offIntl();
+  if (S.off.step === 'intl' && me.national && !me.bot) return 'intl'; // 自分が代表にいる大会は、画面で見てもらう
   if (['awards', 'intl'].includes(S.off.step)) offToReview();
   if (me.ended) return 'end';
-  if (me.offers.length) return 'offers';
+  if (me.offers.length || me.natOffer) return 'offers';
   if (S.off.step === 'review') autoOffToCamp();
   if (me.justRetired) {
     me.justRetired = false;
@@ -627,7 +708,7 @@ function lifeStep() {
 function careerNext() {
   const me = S.me;
   if (me.job && me.job.yearsLeft <= 0) leaveJob('満了');
-  me.offers = []; me.verdict = null;
+  me.offers = []; me.natOffer = null; me.verdict = null;
   if (!me.job) return lifeStep();
   if (hasControl('front')) offFAStart();
   else autoOffToCamp();
