@@ -1191,7 +1191,7 @@ function renderIntl(I) {
     <h3>1次リーグ</h3><div class="grid2">${I.table.map(groupTbl).join('')}</div>
     <details><summary>1次リーグの全試合</summary><div class="scroll"><table class="tbl">${gHead}${I.games.filter(g => g.stage === '1次リーグ').map(gRow).join('')}</table></div></details>
     ${renderNationalStaff(I)}
-    <h3>日本代表（${I.japan.length}人）</h3><p class="muted small">12 球団の日本人選手から、能力で自動で選ばれました。出た選手は人気が上がります（優勝するとさらに）。</p>
+    <h3>日本代表（${I.japan.length}人）</h3><p class="muted small">${I.byMe ? '監督のあなたが選んだメンバーです。' : '12 球団の日本人選手から、能力で自動で選ばれました。'}出た選手は人気が上がります（優勝するとさらに）。</p>
     <div class="grid2"><div><h4>野手</h4><table class="tbl">${I.japan.filter(x => !x.P).map(jpRow).join('')}</table></div><div><h4>投手</h4><table class="tbl">${I.japan.filter(x => x.P).map(jpRow).join('')}</table></div></div>
     <button class="primary big" data-act="offNext">査定へ ▶</button></section>`;
 }

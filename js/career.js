@@ -43,6 +43,7 @@ const NAT_W = { merit: 40, rep: 0.6, jp: 5 }, NAT_JP_MAX = 3; // 選考の点：
 const NAT_LINE = { manager: 60, coach: 35 }, NAT_CHANCE = 0.7, NAT_AGE = 70; // この点を超えると、この確率で話が来る。この歳からは選ばれない
 const NAT_PAY = { manager: 8000, coach: 1000 }; // 報酬（万円）。優勝すると同じ額のボーナス。監督は専任なので高い
 const NAT_FAME = { pay: { manager: 1.3, coach: 1.1 }, champ: 0.1, champMax: 2, extra: { manager: 0.35, coach: 0.12 }, jobMul: 0.5 }; // 代表の経験のあとの監督の話：年俸の倍率、優勝 1 回で足す倍率と数える上限、席が空いていない球団から話が来る確率、仕事があるときに掛ける割合
+const NAT_PICK_MAX = 5, NAT_CAND = 6; // 代表の監督が入れ替えられる人数と、1 つの枠に出す候補の数
 const NAT_REP = { 優勝: 8, 準優勝: 3, ベスト4: 0, '1次リーグ敗退': -3 }, NAT_REP_COACH = 0.5; // 大会の結果で変わる評判。コーチはこの割合
 const KIND_START = { 高校: { age: 18, q: [34, 46], pot: 0.08 }, 大学: { age: 22, q: [42, 54], pot: 0 }, 社会人: { age: 24, q: [46, 58], pot: 0 } };
 
@@ -51,6 +52,7 @@ function humanRoster(t) { return t.id === S.myTeamId && hasControl('roster'); }
 function humanFront(t) { return t.id === S.myTeamId && hasControl('front'); }
 function mePlayer() { return S.me && S.me.pid != null ? S.players[S.me.pid] : null; }
 function isMe(p) { return !!(S.me && p && S.me.pid === p.id); }
+function meAuto() { const m = S.me; return !m || !!m.bot || !!m.skip; } // 測定と「引退まで飛ばす」のあいだは、自分の選択も AI に任せる
 function myAge() { return S.year - S.me.birthYear; }
 // コーチは投手か野手のどちらかを受け持つ。元の専門の席だけ話が来る
 function myCoachRole() { return S.me.isP ? 'pcoach' : 'bcoach'; }
@@ -89,10 +91,12 @@ function careerMoved(p, from, to, how, partner) {
 function careerCut(p, from) {
   if (!isMe(p)) return;
   lifeEvent(`${from ? `${from.short}から` : ''}戦力外通告を受け、自由契約に`, 'out');
-  S.me.notices.push({ title: '📰 戦力外通告', text: `${from ? from.name : '球団'}から戦力外を告げられました。`, sub: '拾ってくれる球団を待ちます。', timeline: true });
+  S.me.notices.push({ title: '📰 戦力外通告', text: `${from ? from.name : '球団'}から戦力外を告げられました。`, sub: meAuto() ? '拾ってくれる球団を待ちます。' : '現役を続けるか、引退するかを選べます。', timeline: true });
+  if (!meAuto()) S.me.pick = { kind: 'cut' };
 }
 function careerSigned(p, t) {
   if (!isMe(p)) return;
+  if (S.me.pick && S.me.pick.kind === 'cut') S.me.pick = null; // 選ぶ前に拾われた
   lifeEvent(`自由契約から${t.short}と契約`, 'move');
   S.me.notices.push({ title: '📰 再出発', text: `${t.name}が拾ってくれました。`, sub: '', timeline: true });
 }
@@ -401,7 +405,7 @@ function careerRetire(p) {
   me.card = { ...honorCard(p), draft: draftLabel(p), pos: canPitch(p) && !p.twoWay ? '投手' : p.pos, teams: [...new Set((p.career || []).map(x => x.t))] };
   me.merit = meritOf(p);
   me.rep = U.clamp(Math.round(me.merit * 60 + Math.min(me.diary.length, 18) + 5), 5, 85);
-  me.retireYear = S.year; me.phase = 'free'; me.justRetired = true; me.pid = null; me.jobless = 0;
+  me.retireYear = S.year; me.phase = 'free'; me.justRetired = true; me.pid = null; me.jobless = 0; me.retirePlan = false; me.pick = null; me.faChoice = null;
   addNews(`${me.name}（${p.age}歳）が現役を引退しました。`, 'big');
   lifeEvent(`${p.age}歳で現役引退（現役${me.diary.length}年）`, 'retire');
 }
@@ -717,18 +721,80 @@ function autoOffToCamp() {
   S.popups = [];
 }
 
+// ---------- 現役のオフの選択 ----------
+// 査定のあと、球団に任せる前に聞くこと：引退を勧められたか、FA 権があるか
+function nextOffPick() {
+  const me = S.me, p = mePlayer(), O = S.off;
+  if (me.pick) return me.pick;
+  if (meAuto() || me.phase !== 'player' || !p || p.teamId == null || me.retirePlan) return null;
+  if (!O.askedRetire) {
+    O.askedRetire = true;
+    if (U.chance(retireChance(p, careerAge(p), ovr(p)))) return (me.pick = { kind: 'retire' });
+  }
+  if (!O.askedFA) {
+    O.askedFA = true;
+    if (hasFA(p)) return (me.pick = { kind: 'fa', market: faMarket(p) });
+  }
+  return null;
+}
+function choosePick(v) {
+  const me = S.me, k = me.pick && me.pick.kind, p = mePlayer();
+  if (!k) return;
+  me.pick = null;
+  if (k === 'fa') me.faChoice = v;
+  if (k === 'retire' && v === 'retire') me.retirePlan = true;
+  if (k === 'cut' && v === 'retire' && p) {
+    S.freeAgents = S.freeAgents.filter(id => id !== p.id);
+    retireRecord(p);
+    delete S.players[p.id];
+  }
+}
+
+// ---------- 代表の監督の準備 ----------
+function natPickNeeded() {
+  const me = S.me;
+  if (!me.natDuty || me.natDuty.y !== S.year || meAuto()) return false;
+  if (!S.off.natPick) {
+    const japan = selectJapan();
+    S.off.natPick = { japan, orig: japan.map(x => x.pid), tactic: { steal: '普通', hook: '普通' }, done: false };
+  }
+  return !S.off.natPick.done;
+}
+function natCandidates(row) {
+  const N = S.off.natPick, inTeam = id => N.japan.some(x => x.pid === id);
+  return Object.values(S.players)
+    .filter(p => p.teamId != null && !p.foreign && !p.inj && !inTeam(p.id) && (row.P ? p.isP : !p.isP && canBat(p) && p.pos === row.pos))
+    .sort((a, b) => ovr(b) - ovr(a)).slice(0, NAT_CAND);
+}
+function natChanged(ids) { return ids.filter(id => !S.off.natPick.orig.includes(id)).length; }
+// 入れ替える。入れ替えた人数が上限を超えるならエラーの文を返す
+function natSwap(oldPid, newPid) {
+  const N = S.off.natPick, i = N.japan.findIndex(x => x.pid === oldPid), p = S.players[newPid];
+  if (i < 0 || !p || p.teamId == null) return '';
+  const next = N.japan.map(x => (x.pid === oldPid ? newPid : x.pid));
+  if (natChanged(next) > NAT_PICK_MAX) return `入れ替えられるのは ${NAT_PICK_MAX} 人までです。`;
+  const row = N.japan[i];
+  N.japan[i] = { pid: p.id, name: p.name, team: S.teams[p.teamId].short, pos: row.pos, P: row.P };
+  return '';
+}
+
 // 無職・現役のとき、次に人の判断が要るところまで進める
 function lifeStep() {
   const me = S.me;
   if (me.ended || me.job) return me.ended ? 'end' : 'job';
   if (S.phase !== 'off') runSeasonAuto();
   if (S.phase !== 'off') return 'stuck';
-  if (S.off.step === 'awards' && intlYear() && !S.off.intl) offIntl();
+  if (S.off.step === 'awards' && intlYear() && !S.off.intl) {
+    if (natPickNeeded()) return 'natpick';
+    offIntl();
+  }
   if (S.off.step === 'intl' && me.national && !me.bot) return 'intl'; // 自分が代表にいる大会は、画面で見てもらう
   if (['awards', 'intl'].includes(S.off.step)) offToReview();
   if (me.ended) return 'end';
   if (me.offers.length || me.natOffer) return 'offers';
+  if (S.off.step === 'review' && nextOffPick()) return 'pick';
   if (S.off.step === 'review') autoOffToCamp();
+  if (me.pick) return 'pick'; // 戦力外になった
   if (me.justRetired) {
     me.justRetired = false;
     me.offers = makeRetireOffers();

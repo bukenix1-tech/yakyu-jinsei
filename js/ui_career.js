@@ -60,6 +60,43 @@ function renderJobCard() {
   ${renderStaff()}`;
 }
 
+// 現役のオフに、自分で決めること
+function renderPlayerPick() {
+  const me = S.me, k = me.pick && me.pick.kind, p = mePlayer();
+  if (!k || !p) return '';
+  const btn = (v, label, cls) => `<button class="${cls || ''}" data-act="lifePick" data-v="${v}">${label}</button>`;
+  if (k === 'fa') {
+    const t = p.teamId != null ? S.teams[p.teamId] : null;
+    return `<section class="card"><h2>📝 FA 権の行使</h2><p>FA 権を持っています。${t ? `${h(t.short)}に残るか、` : ''}宣言してほかの球団の話を聞くかを選んでください。</p>
+      <p class="muted small">いまの年俸 ${U.money(p.salary)} ・ 市場の相場 ${U.money(me.pick.market)}。宣言すると、行き先は条件を見て決まります。</p>
+      <p>${btn('declare', 'FA 宣言する', 'primary')} ${btn('stay', '残留する')}</p></section>`;
+  }
+  if (k === 'retire') return `<section class="card"><h2>👋 引退の勧め</h2><p>球団から、そろそろ引退してはどうかと言われました。続けることもできますが、戦力外になるかもしれません。</p>
+      <p>${btn('stay', '現役を続ける', 'primary')} ${btn('retire', 'このオフで引退する', 'danger')}</p></section>`;
+  return `<section class="card"><h2>📰 戦力外のあと</h2><p>所属球団がなくなりました。拾ってくれる球団を待つか、ここで引退して次の仕事を探すかを選んでください。</p>
+      <p class="muted small">2 年続けて拾われないと、引退になります。</p>
+      <p>${btn('stay', '現役を続ける', 'primary')} ${btn('retire', '引退して次の仕事を探す', 'danger')}</p></section>`;
+}
+
+// 代表の監督の、大会の前の準備
+function renderNatPick() {
+  const N = S.off.natPick, left = NAT_PICK_MAX - natChanged(N.japan.map(x => x.pid));
+  const row = x => {
+    const p = S.players[x.pid], cands = natCandidates(x), changed = !N.orig.includes(x.pid);
+    const opts = cands.map(c => `<option value="${c.id}">${h(c.name)}（${h(S.teams[c.teamId].short)}・総合${Math.round(ovr(c))}・${c.age}歳）</option>`).join('');
+    return `<tr class="${changed ? 'me' : ''}"><th>${h(x.pos)}</th><td class="l">${h(x.name)}<span class="muted">（${h(x.team)}・総合${Math.round(ovr(p))}）</span></td>
+      <td class="l"><select data-chg="natSwap" data-pid="${x.pid}"><option value="">入れ替える…</option>${opts}</select></td></tr>`;
+  };
+  const seg = (k, names) => `<span class="seg">${names.map(n => `<button class="${N.tactic[k] === n ? 'on' : ''}" data-act="natTactic" data-k="${k}" data-v="${n}">${n}</button>`).join('')}</span>`;
+  const tbl = list => `<div class="scroll"><table class="tbl">${list.map(row).join('')}</table></div>`;
+  return `<section class="card"><h2>🎌 ${S.year}年 国際大会の準備</h2>
+      <p>強化委員会が選んだメンバーです。監督の判断で、あと <b>${left}人</b> 入れ替えられます。投手は投手と、野手は同じ守備位置の選手と入れ替えます。</p>
+      <h3>采配の方針</h3><p>走塁：${seg('steal', Object.keys(TACTIC_STEAL))} ・ 投手の交代：${seg('hook', Object.keys(TACTIC_HOOK))}</p>
+      <h3>野手</h3>${tbl(N.japan.filter(x => !x.P))}
+      <h3>投手</h3>${tbl(N.japan.filter(x => x.P))}
+      <p><button class="primary big" data-act="natStart">このメンバーで大会へ ▶</button></p></section>`;
+}
+
 // 代表の監督の打診
 function renderNatOffer() {
   const me = S.me, o = me.natOffer;
@@ -183,10 +220,15 @@ function renderCareer() {
       <div>${nameCell(p)} ・ 総合 <b>${Math.round(ovr(p))}</b> ・ 才能 <span class="stars">${potStars(p.pot)}</span> ・ ${p.age}歳</div>
       <div class="pc-abil">${abilSum(p)}</div>
       ${p.stats.g || p.stats.pg ? `<p class="muted">今季：${h(statLine(p))}</p>` : ''}
-      <p><button class="primary big" data-act="lifeYear">次の 1 年へ ▶</button> <button data-act="lifeRetire">引退まで飛ばす ⏭</button></p></section>`;
+      ${me.pick ? '' : `<p><label>練習の重点：<select data-chg="myFocus">${focusOptions(p).map(f => `<option ${p.focus === f ? 'selected' : ''}>${f}</option>`).join('')}</select></label></p>
+      ${me.retirePlan ? '<p><b>今季限りで引退すると決めています。</b> <button class="sm" data-act="retirePlan">取り消す</button></p>' : ''}
+      <p><button class="primary big" data-act="lifeYear">次の 1 年へ ▶</button> <button data-act="lifeRetire">引退まで飛ばす ⏭</button>
+        ${me.retirePlan ? '' : '<button class="danger" data-act="retirePlan">今季限りで引退する</button>'}</p>
+      <p class="muted small">「引退まで飛ばす」のあいだは、FA や引退の判断も AI に任せます。</p>`}</section>${renderPlayerPick()}`;
   } else if (me.natDuty) {
-    main = `<section class="card"><h2>🎌 ${NATIONAL_NAME}の監督</h2><p>${me.natDuty.y}年の国際大会に向けて、代表に専念しています。</p>
-      <p><button class="primary big" data-act="lifeYear">${S.phase === 'off' ? '次のシーズンへ ▶' : '国際大会へ ▶'}</button></p></section>`;
+    const np = S.phase === 'off' && S.off.natPick && !S.off.natPick.done;
+    main = np ? renderNatPick() : `<section class="card"><h2>🎌 ${NATIONAL_NAME}の監督</h2><p>${me.natDuty.y}年の国際大会に向けて、代表に専念しています。</p>
+      <p><button class="primary big" data-act="lifeYear">${S.phase === 'off' ? '次のシーズンへ ▶' : '代表のメンバーを選ぶ ▶'}</button></p></section>`;
   } else if (me.phase === 'free') {
     const v = me.verdict;
     main = `${v ? `<div class="verdict ${v.kind === 'fired' ? 'fired' : ''}">${h(v.text)}</div>` : ''}

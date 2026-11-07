@@ -871,7 +871,8 @@ function intlTeam(name, ids, i, gi) {
 // 国際大会をまるごと行う（オフの表彰のあと）
 function offIntl() {
   const natStaff = selectNationalStaff();
-  const japan = selectJapan();
+  const natPick = S.off.natPick; // 自分が代表の監督なら、選んだメンバーと方針で戦う
+  const japan = natPick ? natPick.japan : selectJapan();
   const base = U.sum(japan, x => ovr(S.players[x.pid])) / japan.length;
   const countries = [{ name: '日本', ids: japan.map(x => x.pid), jp: true }, ...INTL_COUNTRIES.map(c => ({ name: c.name, ids: intlRoster(c, base) }))];
   countries.forEach((c, i) => { c.i = i; c.w = 0; c.l = 0; c.d = 0; c.rs = 0; c.ra = 0; c.gi = 0; });
@@ -883,6 +884,7 @@ function offIntl() {
   const pts = {}, games = [];
   const play = (stage, a, b) => {
     const home = intlTeam(b.name, b.ids, b.i, b.gi++), away = intlTeam(a.name, a.ids, a.i, a.gi++);
+    if (natPick) { if (b.jp) home.tactic = natPick.tactic; if (a.jp) away.tactic = natPick.tactic; }
     [...home.players, ...away.players].forEach(id => { const p = S.players[id]; p.stats = newStats(); p.rest = 7; p.fatigue = 0; p.cond = 3; });
     const fin = stage === '決勝';
     const res = playGame(S, home, away, false, fin);
@@ -919,7 +921,7 @@ function offIntl() {
   const mvp = mvpP ? { name: mvpP.name, team: champ.jp ? `日本・${S.teams[mvpP.teamId].short}` : champ.name, pid: champ.jp ? mvpP.id : null } : null;
   if (mvpP && champ.jp) { addFame(mvpP, INTL_FAME.mvp); mvpP.intlMvp = (mvpP.intlMvp || 0) + 1; }
   countries.slice(1).forEach(c => c.ids.forEach(id => { delete S.players[id]; }));
-  S.off.intl = { year: S.year, japan, table, games, champ: champ.name, jp: jpResult, mvp, staff: natStaff };
+  S.off.intl = { year: S.year, japan, table, games, champ: champ.name, jp: jpResult, mvp, staff: natStaff, byMe: !!natPick };
   if (!S.intlHist) S.intlHist = [];
   S.intlHist.unshift({ y: S.year, champ: champ.name, jp: jpResult, w: U.sum(reached, g => (g.away === jpName ? g.score[0] > g.score[1] : g.score[1] > g.score[0]) ? 1 : 0), l: U.sum(reached, g => (g.away === jpName ? g.score[0] < g.score[1] : g.score[1] < g.score[0]) ? 1 : 0), mvp: mvp ? [mvp.name, mvp.team] : null, mgr: natStaff.manager.name });
   const mine = japan.filter(x => S.players[x.pid].teamId === S.myTeamId).map(x => x.name);
@@ -1511,9 +1513,12 @@ function offFADeclare() {
     if (!p || p.teamId == null) return;
     const t = S.teams[p.teamId];
     const mine = humanFront(t);
+    const myChoice = isMe(p) ? S.me.faChoice : null; // 自分のことは自分で決める
+    if (isMe(p)) S.me.faChoice = null;
+    if (myChoice === 'stay') { addNews(`${p.name}は権利を行使せず、残留を決めました。`); return; }
     // 他球団は、いい選手なら引き留める
     const retain = mine ? (F.retain[id] || 0) : (ovr(p) >= 60 && U.chance(0.5) ? 1.2 : 0);
-    if (!U.chance(declareChance(p, retain))) {
+    if (myChoice !== 'declare' && !U.chance(declareChance(p, retain))) {
       if (retain) {
         p.salary = Math.round(p.salary * retain / 10) * 10;
         addLoyalty(p, 5);
@@ -1524,6 +1529,7 @@ function offFADeclare() {
     const rank = faRank(t, p), no = faRankNo(t, p);
     p.faUsed = true;
     p.svcUsed = p.svc || 0;
+    if (isMe(p)) lifeEvent(`${t.short}で FA 宣言`, 'move');
     const why = ovr(p) >= FA_PLAY_MIN_OVR && playShare(p) < 0.4 ? '出場機会を求めて' : '';
     F.declared.push({ pid: id, from: t.id, rank, no, oldSalary: p.salary, mv: faMarket(p), bids: aiBids(p, t) });
     removeFromTeam(p);
@@ -1591,12 +1597,14 @@ function offFAResolve() {
     if (!best) {
       // どこからも声がかからなければ元の球団に残る（宣言残留）
       signPlayer(from, p);
+      if (isMe(p)) lifeEvent(`どこからも声がかからず、${from.short}に宣言残留`, 'move');
       F.results.push({ pid: d.pid, name: p.name, from: d.from, to: d.from, salary: p.salary, years: 1, bids: bids.length, note: '宣言残留' });
       return;
     }
     const to = S.teams[best.team];
     signPlayer(to, p);
     if (to.id !== from.id) careerMoved(p, from, to, 'FA');
+    else if (isMe(p)) lifeEvent(`${to.short}に残留（${best.years}年・年俸${U.money(best.salary)}）`, 'move');
     p.salary = best.salary;
     p.contractYears = best.years - 1;
     let comp = 0, cp = null;
@@ -1741,6 +1749,7 @@ function offContract() {
       const ca = careerAge(p);
       leave = U.chance(retireChance(p, ca, o));
       if (p.foreign && o < 55) leave = true;
+      if (isMe(p)) { if (S.me.retirePlan) leave = true; else if (!meAuto()) leave = false; } // 自分の引退は自分で決める
       if (leave) {
         const can = humanFront(t) && !(p.foreign && o < 55); // 慰留は GM の仕事。力が足りずに出ていく外国人選手は引き止めない
         if (t.id === my.id) retired.push({ pid: p.id, name: p.name, age: p.age, why: p.foreign && p.age < 35 ? '退団' : '引退', can });
@@ -2271,7 +2280,8 @@ function agingFreeAgents() {
     if (!p) return false;
     agePlayer(p);
     p.faYears = (p.faYears || 0) + 1;
-    if (careerAge(p) >= 37 || p.faYears >= 2 || ovr(p) < 38) { retireRecord(p); delete S.players[id]; return false; }
+    const mine = isMe(p) && !meAuto(); // 自分は、2 年続けて拾われないか、自分で決めたときだけ引退する
+    if ((isMe(p) && S.me.retirePlan) || (mine ? p.faYears >= 2 : careerAge(p) >= 37 || p.faYears >= 2 || ovr(p) < 38)) { retireRecord(p); delete S.players[id]; return false; }
     p.salary = faDemand(p);
     return true;
   });

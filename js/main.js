@@ -321,10 +321,29 @@ const ACTIONS = {
     window.scrollTo(0, 0);
   },
   declineNational() { S.me.natOffer = null; },
+  retirePlan() { S.me.retirePlan = !S.me.retirePlan; },
+  lifePick(el) {
+    const k = S.me.pick && S.me.pick.kind, v = el.dataset.v;
+    if (v === 'retire' && !confirm(k === 'cut' ? '現役を引退しますか？' : 'このオフで現役を引退しますか？')) return 'keep';
+    choosePick(v);
+    UI.lifeMsg = lifeStep();
+    UI.tab = 'career';
+    window.scrollTo(0, 0);
+  },
+  natTactic(el) { S.off.natPick.tactic[el.dataset.k] = el.dataset.v; },
+  natStart() {
+    if (!confirm('このメンバーで国際大会に臨みますか？')) return 'keep';
+    S.off.natPick.done = true;
+    UI.lifeMsg = lifeStep();
+    UI.tab = UI.lifeMsg === 'intl' ? 'off' : 'career';
+    window.scrollTo(0, 0);
+  },
   lifeYear() { S.me.natOffer = null; UI.lifeMsg = lifeStep(); UI.tab = S.me.job || UI.lifeMsg === 'intl' ? 'off' : 'career'; window.scrollTo(0, 0); },
   lifeRetire() {
     let guard = 0, r = 'year';
+    S.me.skip = true;
     while (S.me.phase === 'player' && guard++ < 40 && r === 'year') { r = lifeStep(); S.me.notices = []; }
+    S.me.skip = false;
     UI.tab = 'career'; window.scrollTo(0, 0);
   },
   acceptOffer(el) {
@@ -393,6 +412,8 @@ const CHANGES = {
   faYears(el) { const pid = +el.dataset.pid; UI.faDraft[pid] = { ...(UI.faDraft[pid] || { mul: 1 }), years: +el.value }; return 'keep'; },
   viewTeam(el) { UI.viewTeam = +el.value; },
   focus(el) { S.players[+el.dataset.pid].focus = el.value; return 'keep'; },
+  myFocus(el) { const p = mePlayer(); if (p) p.focus = el.value; return 'keep'; },
+  natSwap(el) { if (el.value) UI.toast = natSwap(+el.dataset.pid, +el.value); },
   lpos(el) {
     const t = myTeam(), i = +el.dataset.i, pos = el.value;
     const j = t.lineup.findIndex((s, k) => k !== i && s.pos === pos);
