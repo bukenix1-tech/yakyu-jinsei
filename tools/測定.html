@@ -95,7 +95,7 @@ function report(rs, ms) {
   const rows = [
     ['本数', rs.length], ['1 本あたりの時間（秒）', (ms / rs.length / 1000).toFixed(1)], ['1 年あたりの時間（秒）', (ms / U.sum(rs, r => r.playerYears + r.jobYears || 1) / 1000).toFixed(2)],
     ['現役の年数', avg(r => r.playerYears).toFixed(1)], ['一軍にいた年数', avg(r => r.firstYears).toFixed(1)], ['引退した歳', avg(r => r.playEndAge || 0).toFixed(1)], ['功績（0〜1）', avg(r => r.merit).toFixed(2)], ['一軍に 3 年以上いた人の割合', pct(rs.filter(r => r.firstYears >= 3).length, rs.length)],
-    ['仕事の年数', avg(r => r.jobYears).toFixed(1)], ['　監督', roleY('manager')], ['　コーチ', roleY('coach')], ['　GM', roleY('gm')], ['渡り歩いた球団', avg(r => r.teams).toFixed(1)], ['届いた話：監督・コーチ・GM', ['manager', 'coach', 'gm'].map(k => OFFERED[k] || 0).join('・')],
+    ['仕事の年数', avg(r => r.jobYears).toFixed(1)], ['　監督', roleY('manager')], ['　投手コーチ', roleY('pcoach')], ['　野手コーチ', roleY('bcoach')], ['　GM', roleY('gm')], ['渡り歩いた球団', avg(r => r.teams).toFixed(1)], ['届いた話：監督・投手コーチ・野手コーチ・GM', ['manager', 'pcoach', 'bcoach', 'gm'].map(k => OFFERED[k] || 0).join('・')],
     ['解任の回数', avg(r => r.fired).toFixed(1)], ['1 つの仕事の平均年数', st.length ? (U.sum(st, s => s.y) / st.length).toFixed(1) : '-'], ['仕事の終わりのうち解任', pct(ended.filter(s => /解任/.test(s.end)).length, ended.length)],
     ['ノルマの達成率', pct(U.sum(rs, r => r.ok), U.sum(rs, r => r.jobYears))], ['日本一（仕事で）', avg(r => r.jp).toFixed(2)], ['球界を去った歳', avg(r => r.endAge || 0).toFixed(1)],
     ['スコア 平均（億円）', (avg(r => r.earned) / 10000).toFixed(1)], ['スコア 最低〜最高（億円）', (Math.min(...rs.map(r => r.earned)) / 10000).toFixed(1) + '〜' + (Math.max(...rs.map(r => r.earned)) / 10000).toFixed(1)],

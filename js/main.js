@@ -164,7 +164,7 @@ const ACTIONS = {
     if (j < 0 || j >= t.lineup.length) return;
     [t.lineup[i], t.lineup[j]] = [t.lineup[j], t.lineup[i]];
   },
-  intensity(el) { myTeam().intensity = el.dataset.k; },
+  intensity(el) { myTeam()[coachSide() === 'pit' ? 'intensityP' : 'intensity'] = el.dataset.k; },
   upgrade(el) {
     const k = el.dataset.k, cost = facilityCost(facLv(myTeam(), k), k);
     if (!confirm(`${FACILITIES[k].name}を ${U.money(cost)} で改修しますか？`)) return 'keep';
@@ -442,7 +442,7 @@ document.addEventListener('click', e => {
   e.preventDefault();
   const fn = ACTIONS[el.dataset.act];
   if (!fn) return;
-  if (!actionAllowed(el.dataset.act)) { UI.toast = 'それは、いまの仕事の権限ではできません。'; render(); return; }
+  if (!actionAllowed(el.dataset.act, el)) { UI.toast = 'それは、いまの仕事の権限ではできません。'; render(); return; }
   const r = fn(el, e);
   if (S && !saveGame()) UI.toast = '保存できませんでした（ブラウザの保存容量がいっぱいかもしれません）。';
   if (r !== 'keep') render();
@@ -473,7 +473,7 @@ document.addEventListener('change', e => {
   if (!el) return;
   const fn = CHANGES[el.dataset.chg];
   if (!fn) return;
-  if (!actionAllowed(el.dataset.chg)) { UI.toast = 'それは、いまの仕事の権限ではできません。'; render(); return; }
+  if (!actionAllowed(el.dataset.chg, el)) { UI.toast = 'それは、いまの仕事の権限ではできません。'; render(); return; }
   const r = fn(el, e);
   if (S) saveGame();
   if (r !== 'keep') render();

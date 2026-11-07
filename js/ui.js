@@ -549,11 +549,11 @@ function renderPlayerModal(p) {
     <p>${myTeam().active.includes(p.id)
       ? `<b>一軍</b> <button data-act="demote" data-pid="${p.id}">登録抹消（二軍へ）</button> <span class="muted">${S.phase === 'season' ? `抹消すると${REREGISTER_DAYS}日間は一軍に戻せません` : ''}</span>`
       : `<b>二軍</b> ${cannotPromote(myTeam(), p) ? `<span class="muted">一軍に上げられません（${h(cannotPromote(myTeam(), p))}）</span>` : `<button class="primary" data-act="promote" data-pid="${p.id}">一軍に登録</button>`}`}</p>
-    <p>練習の重点：<select data-chg="focus" data-pid="${p.id}">${focusOpts}</select></p>
+    ${hasControl('train') && !coachCanTouch(p) ? `<p class="muted">この選手の練習は${coachSide() === 'pit' ? '野手' : '投手'}コーチの受け持ちです。</p>` : `<p>練習の重点：<select data-chg="focus" data-pid="${p.id}">${focusOpts}</select></p>
     <p>${p.twoWay
       ? `<button data-act="dropTwoWay" data-pid="${p.id}">二刀流をやめる</button> <span class="muted">${p.isP ? '打撃' : '投球'}の能力がなくなり、本業に専念します</span>`
       : p.age <= 27 && ovr(p) < TWO_WAY_MIN_OVR ? `<span class="muted">二刀流に挑戦できるのは総合${TWO_WAY_MIN_OVR}以上の選手です（いま${Math.round(ovr(p))}）</span>`
-      : p.age <= 27 ? `<button data-act="tryTwoWay" data-pid="${p.id}">二刀流に挑戦させる</button> <span class="muted">${p.isP ? '打撃' : '投球'}の練習を始めます（最初は低い能力から。練習の伸びは両方に分かれます）</span>` : ''}</p>
+      : p.age <= 27 ? `<button data-act="tryTwoWay" data-pid="${p.id}">二刀流に挑戦させる</button> <span class="muted">${p.isP ? '打撃' : '投球'}の練習を始めます（最初は低い能力から。練習の伸びは両方に分かれます）</span>` : ''}</p>`}
     ${faOpen()
       ? `<p><button class="danger" data-act="release" data-pid="${p.id}">自由契約にする</button> <span class="muted">チームから外します。他球団に拾われることもあります</span></p>`
       : '<p class="muted">自由契約にできるのは、オフの契約更改〜開幕前と、シーズン中の7月末までです。</p>'}` : ''}
@@ -784,18 +784,20 @@ function renderRoster() {
 // ---------- 練習 ----------
 function renderTrain() {
   const t = myTeam();
-  const ps = teamPlayers(t).sort((a, b) => a.isP - b.isP || a.age - b.age);
-  const mult = INTENSITY[t.intensity].grow * (0.8 + t.fac.train * 0.1);
+  const side = coachSide(), sideName = side === 'pit' ? '投手' : '野手';
+  const ps = teamPlayers(t).filter(p => onSide(p, side)).sort((a, b) => a.isP - b.isP || a.age - b.age);
+  const now = trainIntensity(t, side === 'pit');
+  const mult = INTENSITY[now].grow * (0.8 + t.fac.train * 0.1);
   return `
   <section class="card">
-    <h2>練習方針</h2>
+    <h2>${sideName}の練習方針</h2>
     <p>毎週月曜（休みの日）に練習の成果が出ます。二軍の 25 歳以下は二軍戦で経験を積むので、少し伸びやすくなります。まれに選手が<b>覚醒</b>して大きく伸びることもあります。若い選手・才能（★）の多い選手ほど伸びます。</p>
-    <div class="seg">${Object.keys(INTENSITY).map(k => `<button class="${t.intensity === k ? 'on' : ''}" data-act="intensity" data-k="${k}">${k}</button>`).join('')}</div>
+    <div class="seg">${Object.keys(INTENSITY).map(k => `<button class="${now === k ? 'on' : ''}" data-act="intensity" data-k="${k}">${k}</button>`).join('')}</div>
     <p class="muted">軽め：伸びは小さいが調子が上がりやすく、ケガも少ない ／ 猛練習：よく伸びるがケガと不調が増える
       ／ いまの伸び倍率 ×${mult.toFixed(2)}（練習施設 Lv${t.fac.train}）</p>
   </section>
   <section class="card">
-    <h2>選手ごとの重点</h2>
+    <h2>${sideName}ごとの重点</h2>
     <div class="scroll"><table class="tbl"><tr><th>名前</th><th>守</th><th>年</th><th>型</th><th>才能</th><th>総合</th><th>重点</th></tr>
     ${ps.map(p => `<tr><td class="l">${nameCell(p)}</td><td>${posBadge(p)}</td><td class="nowrap">${p.age}${phaseMark(p)}</td><td>${p.type}</td><td class="stars">${potStars(p.pot)}</td><td>${Math.round(ovr(p))}</td>
       <td><select data-chg="focus" data-pid="${p.id}">${focusOptions(p).map(f => `<option ${p.focus === f ? 'selected' : ''}>${f}</option>`).join('')}</select></td></tr>`).join('')}

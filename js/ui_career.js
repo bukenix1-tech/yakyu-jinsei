@@ -12,7 +12,13 @@ const ACT_NEED = {
   release: 'front', upgrade: 'front', downgrade: 'front', promo: 'front', devGoods: 'front', stopGoods: 'front', scoutForeign: 'front', signFA: 'front', signForeign: 'front', propose: 'front',
   retain: 'front', retireNo: 'front', faBid: 'front', faBidCancel: 'front', faMul: 'front', faYears: 'front', draftBid: 'front', draftPick: 'front', draftPass: 'front', faComp: 'front',
 };
-function actionAllowed(a) { return !S || !ACT_NEED[a] || hasControl(ACT_NEED[a]); }
+function actionAllowed(a, el) {
+  if (!S || !ACT_NEED[a]) return true;
+  if (!hasControl(ACT_NEED[a])) return false;
+  // コーチは自分の受け持ちの選手だけ（投手コーチなら投手）
+  const p = ACT_NEED[a] === 'train' && el && el.dataset.pid ? S.players[+el.dataset.pid] : null;
+  return !p || coachCanTouch(p);
+}
 
 function lifeBar(v, mark) {
   return `<div class="life-bar"><span style="width:${U.clamp(v, 0, 100)}%"></span>${mark != null ? `<i style="left:${mark}%"></i>` : ''}</div>`;
@@ -45,7 +51,7 @@ function renderJobCard() {
     </div>
     <div>信頼度 <b>${Math.round(j.trust)}</b>（赤い線を下回ると解任。目安 ${fireLine(t)}）${lifeBar(j.trust, fireLine(t))}</div>
     <p>今季のノルマ：<b>${h(j.mission ? j.mission.text : '-')}</b> <span class="${m.ok ? 'win' : 'lose'}">${h(m.now)}</span></p>
-    <p class="muted small">${h(o.desc)}。この球団の戦力は開幕前の見立てでリーグ${j.exp}位です。あなたの仕事は「${{ manager: '一軍・オーダー・采配', coach: '練習方針と選手ごとの重点', gm: 'トレード・FA・ドラフト・経営' }[j.role]}」で、ほかは球団の人が動かします。</p>
+    <p class="muted small">${h(o.desc)}。この球団の戦力は開幕前の見立てでリーグ${j.exp}位です。あなたの仕事は「${{ manager: '一軍・オーダー・采配', pcoach: '投手の練習方針と、投手ごとの重点', bcoach: '野手の練習方針と、野手ごとの重点', gm: 'トレード・FA・ドラフト・経営' }[j.role]}」で、ほかは球団の人が動かします。</p>
     ${reqOk ? `<p><label>フロントへの要望：<select data-chg="request">${Object.keys(REQUESTS).map(k => `<option value="${k}" ${me.request === k ? 'selected' : ''}>${REQUESTS[k]}</option>`).join('')}</select></label>
       <span class="muted small">発言力と信頼度が高いほど通ります。</span></p>` : ''}
     <p class="muted small">解任されると、残りの契約の年俸は ${Math.round(FIRE_PAYOUT * 100)}% だけ受け取れます。辞任すると受け取れません。</p>

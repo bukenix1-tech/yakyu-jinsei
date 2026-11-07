@@ -467,6 +467,9 @@ function dailyUpdate() {
   });
 }
 
+// 練習の強さは投手と野手で別々に決める（投手の分がまだ決まっていないセーブは、これまでの値）
+function trainIntensity(t, isP) { return (isP && t.intensityP) || t.intensity; }
+
 function injuryCheck(res) {
   res.sides.forEach(side => {
     const t = side.team;
@@ -584,10 +587,10 @@ function weeklyTraining() {
     if (p.fame > fl) p.fame -= (p.fame - fl) * FAME_DECAY;
   });
   S.teams.forEach(t => {
-    const it = INTENSITY[t.intensity];
-    const mult = it.grow * (0.8 + t.fac.train * 0.1);
     teamPlayers(t).forEach(p => {
       if (p.inj) return;
+      const it = INTENSITY[trainIntensity(t, p.isP)];
+      const mult = it.grow * (0.8 + t.fac.train * 0.1);
       const farm = t.active && !isActive(t, p) && p.age <= 25 ? 1.15 : 1; // 二軍の若手は二軍戦で経験を積む
       const dorm = p.age <= 25 ? 1 + (facLv(t, 'dorm') - 1) * DORM_GROW : 1; // 寮
       trainPlayer(p, mult * farm * dorm);
@@ -2490,6 +2493,7 @@ function endPlayerGoods(t, p) {
 // 古いセーブデータに足りない値を足す
 function migrate() {
   rebuildEvents();
+  migrateCoachRoles();
   S.teams.forEach(t => {
     if (!t.goods) t.goods = [];
     if (!t.nextGoodsId) t.nextGoodsId = 1;

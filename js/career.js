@@ -6,7 +6,8 @@
 
 const ROLES = {
   manager: { name: '監督', can: 'roster', base: 10000, need: 25, w: { win: 1, grow: 0.15, money: 0, pop: 0.25 } },
-  coach:   { name: 'コーチ', can: 'train', base: 2500, need: 0, w: { win: 0.25, grow: 1, money: 0, pop: 0.05 } },
+  pcoach:  { name: '投手コーチ', can: 'train', side: 'pit', base: 2500, need: 0, w: { win: 0.25, grow: 1, money: 0, pop: 0.05 } },
+  bcoach:  { name: '野手コーチ', can: 'train', side: 'bat', base: 2500, need: 0, w: { win: 0.25, grow: 1, money: 0, pop: 0.05 } },
   gm:      { name: 'GM', can: 'front', base: 8000, need: 20, w: { win: 0.6, grow: 0.35, money: 0.6, pop: 0.15 } },
 };
 const ROLE_KEYS = Object.keys(ROLES);
@@ -28,8 +29,8 @@ const PACKAGES = [
   { k: 'std',  name: '標準', years: 2, pay: 1,    lv: 1, voice: 40, desc: 'ふつうの条件' },
   { k: 'bold', name: '勝負', years: 1, pay: 1.3,  lv: 2, voice: 70, desc: '短く、高く、ノルマは重い。発言力は強い' },
 ];
-const STAFF_LEAVE = { manager: [0.15, 0.4, 0.75], coach: [0.25, 0.35, 0.5], gm: [0.2, 0.35, 0.5] }; // 契約が切れたとき、上位・中位・下位の球団で更新されない確率
-const STAFF_YEARS = [1, 3], STAFF_MID_FIRE = { manager: 0.15, coach: 0.03, gm: 0.03 }; // AI のスタッフの契約年数と、下位のときの途中解任の確率
+const STAFF_LEAVE = { manager: [0.15, 0.4, 0.75], pcoach: [0.25, 0.35, 0.5], bcoach: [0.25, 0.35, 0.5], gm: [0.2, 0.35, 0.5] }; // 契約が切れたとき、上位・中位・下位の球団で更新されない確率
+const STAFF_YEARS = [1, 3], STAFF_MID_FIRE = { manager: 0.15, pcoach: 0.03, bcoach: 0.03, gm: 0.03 }; // AI のスタッフの契約年数と、下位のときの途中解任の確率
 const FIRE_PAYOUT = 0.5, BONUS_MISSION = 0.2, BONUS_JP = 0.5; // 解任のとき受け取れる残り年俸の割合と、成果のボーナス（年俸に対する割合）
 const SCORE_KEY = 'yakyujin_scores', SCORE_TOP = 10;
 const TACTIC_STEAL = { 控えめ: 0.5, 普通: 1, 積極: 1.6 };
@@ -44,8 +45,14 @@ function humanFront(t) { return t.id === S.myTeamId && hasControl('front'); }
 function mePlayer() { return S.me && S.me.pid != null ? S.players[S.me.pid] : null; }
 function isMe(p) { return !!(S.me && p && S.me.pid === p.id); }
 function myAge() { return S.year - S.me.birthYear; }
+// コーチは投手か野手のどちらかを受け持つ。元の専門の席だけ話が来る
+function myCoachRole() { return S.me.isP ? 'pcoach' : 'bcoach'; }
+function coachSide() { const m = S.me; return m && m.job ? ROLES[m.job.role].side || null : null; }
+function onSide(p, side) { return !side || (side === 'pit' ? canPitch(p) : canBat(p)); }
+function coachCanTouch(p) { return onSide(p, coachSide()); }
 function roleTitle(role, rep) {
-  if (role === 'coach') return rep < 25 ? '二軍コーチ' : rep < 55 ? '一軍コーチ' : 'ヘッドコーチ';
+  const side = ROLES[role].side;
+  if (side) return rep < 25 ? `二軍${ROLES[role].name}` : rep < 55 ? `一軍${ROLES[role].name}` : `${side === 'pit' ? '投手' : '野手'}総合コーチ`;
   if (role === 'gm') return rep < 30 ? 'GM補佐' : 'GM';
   return '監督';
 }
@@ -109,6 +116,31 @@ function rebuildEvents() {
   me.events = ev;
 }
 
+// コーチが 1 つの席だったころのセーブを、投手コーチと野手コーチに分ける
+function migrateCoachRoles() {
+  const me = S.me;
+  if (!me || !S.staff) return;
+  const mine = myCoachRole(), other = mine === 'pcoach' ? 'bcoach' : 'pcoach';
+  S.teams.forEach(t => {
+    const st = S.staff[t.id];
+    if (!st || !('coach' in st)) return;
+    const s = st.coach;
+    delete st.coach;
+    if (s && s.me) { st[mine] = s; st[other] = makeStaff(other, t); }
+    else { st.pcoach = s; st.bcoach = makeStaff('bcoach', t); }
+  });
+  (S.vacancies || []).forEach(v => { if (v.role === 'coach') v.role = 'pcoach'; });
+  (me.offers || []).forEach(o => { if (o.role === 'coach') { o.role = mine; o.title = roleTitle(mine, me.rep); } });
+  if (me.job && me.job.role === 'coach') {
+    me.job.role = mine;
+    me.job.title = roleTitle(mine, me.rep);
+    if (me.job.mission) me.job.mission = makeMission(me.job, S.teams[me.job.teamId]);
+  }
+  if (me.xp && me.xp.coach != null) { me.xp[mine] = me.xp.coach; me.xp[other] = 0; delete me.xp.coach; }
+  (me.log || []).forEach(r => { if (r.role === 'coach') r.role = mine; });
+  if (me.lastLeft && me.lastLeft.role === 'coach') me.lastLeft.role = mine;
+}
+
 // ---------- 始まり ----------
 function staffSalary(role, rep, t) { return Math.round(ROLES[role].base * (0.6 + rep / 100) * (0.7 + t.pop / 100) / 10) * 10; }
 function makeStaff(role, t) {
@@ -160,7 +192,7 @@ function initCareer(o) {
   signPlayer(t, p);
   S.me = {
     name: p.name, isP: !!o.isP, kind: p.kind, birthYear: S.year - K.age, pid: p.id, phase: 'player', job: null, rep: 0, earned: 0,
-    diary: [], log: [], offers: [], jobless: 0, fired: 0, xp: { manager: 0, coach: 0, gm: 0 }, ties: {}, mates: {}, notices: [], request: '',
+    diary: [], log: [], offers: [], jobless: 0, fired: 0, xp: { manager: 0, pcoach: 0, bcoach: 0, gm: 0 }, ties: {}, mates: {}, notices: [], request: '',
     card: null, merit: 0, retireYear: null, justRetired: false, ended: false, verdict: null, bot: !!o.bot, events: [], msDone: [],
   };
   lifeEvent(`${S.year - 1}年ドラフト${round}位で${t.name}に入団`, 'start');
@@ -179,12 +211,12 @@ function strengthRank(t) {
 function makeMission(j, t) {
   const type = t.owner.type, lv = j.lv;
   let k = 'rank';
-  if (j.role === 'coach') k = 'grow';
+  if (ROLES[j.role].side) k = 'grow';
   else if (j.role === 'manager') k = type === 'grow' ? 'young' : type === 'pop' || type === 'money' ? 'pop' : 'rank';
   else k = type === 'win' ? 'rank' : type;
   const exp = j.exp;
   if (k === 'rank') { const n = U.clamp(exp + [1, 0, -1][lv], 1, 6); return { k, n, text: `リーグ${n}位以内` }; }
-  if (k === 'grow') { const n = [8, 5, 3][lv]; return { k, n, text: `若手の伸びが 12 球団で${n}位以内` }; }
+  if (k === 'grow') { const n = [8, 5, 3][lv]; return { k, n, text: `若手${ROLES[j.role].side === 'pit' ? '投手' : '野手'}の伸びが 12 球団で${n}位以内` }; }
   if (k === 'young') { const n = [0.12, 0.2, 0.3][lv]; return { k, n, text: `25 歳以下の出場の割合 ${Math.round(n * 100)}% 以上` }; }
   if (k === 'money') { const n = [8, 5, 3][lv]; return { k, n, text: `今季の収支が 12 球団で${n}位以内` }; }
   const n = [0, 2, 5][lv];
@@ -206,9 +238,9 @@ function careerSeasonStart() {
   addNews(`${t.owner.name}オーナー「今季は${j.mission.text}。頼んだぞ」`, 'big');
 }
 
-function growthRank(t) {
+function growthRank(t, side) {
   const score = x => {
-    const ds = teamPlayers(x).filter(p => S.growthBase && S.growthBase[p.id] != null).map(p => ovr(p) - S.growthBase[p.id]);
+    const ds = teamPlayers(x).filter(p => onSide(p, side) && S.growthBase && S.growthBase[p.id] != null).map(p => ovr(p) - S.growthBase[p.id]);
     return ds.length ? U.sum(ds) / ds.length : -99;
   };
   return S.teams.slice().sort((a, b) => score(b) - score(a)).indexOf(t) + 1;
@@ -228,7 +260,7 @@ function missionNow(j, t) {
   const M = j.mission;
   if (!M) return { ok: false, now: '' };
   if (M.k === 'rank') { const r = rankOf(t.id); return { ok: r <= M.n, now: `いま${r}位` }; }
-  if (M.k === 'grow') { const r = growthRank(t); return { ok: r <= M.n, now: `いま${r}位` }; }
+  if (M.k === 'grow') { const r = growthRank(t, ROLES[j.role].side); return { ok: r <= M.n, now: `いま${r}位` }; }
   if (M.k === 'young') { const v = youngShare(t); return { ok: v >= M.n, now: `いま${Math.round(v * 100)}%` }; }
   if (M.k === 'money') { const r = moneyRank(t); return { ok: r <= M.n, now: `いま${r}位` }; }
   const v = t.pop - j.popStart;
@@ -296,12 +328,12 @@ function writeDiary(p) {
 }
 
 function yearMetrics(t, j) {
-  const rank = rankOf(t.id), P = S.off || {};
+  const rank = rankOf(t.id), P = S.off || {}, growRank = growthRank(t, ROLES[j.role].side);
   const jp = P.champ === t.name, lgChamp = S.post && S.post.champs && S.post.champs[t.lg] === t.id;
   return {
-    rank, jp, lgChamp, growRank: growthRank(t),
+    rank, jp, lgChamp, growRank,
     win: U.clamp((j.exp - rank) / 3 + (pct(t) - 0.5) * 2 + (jp ? 0.8 : lgChamp ? 0.4 : 0), -1.2, 1.5),
-    grow: (6.5 - growthRank(t)) / 5.5,
+    grow: (6.5 - growRank) / 5.5,
     money: (6.5 - moneyRank(t)) / 5.5,
     pop: U.clamp((t.pop - j.popStart) / 8, -1, 1),
   };
@@ -427,6 +459,7 @@ function makeOffers() {
   S.vacancies.forEach(v => {
     const t = S.teams[v.teamId];
     if (S.staff[v.teamId][v.role]) return;
+    if (ROLES[v.role].side && v.role !== myCoachRole()) return;
     if (last && last.teamId === v.teamId && /解任/.test(last.reason) && last.y === S.year) return;
     if (j && j.teamId === v.teamId && j.role === v.role) return;
     const score = me.rep + (me.ties[t.short] || 0) * 2 + Math.min(me.xp[v.role], 10) * 2 - t.pop * 0.5 - ROLES[v.role].need;
@@ -447,7 +480,7 @@ function makeRetireOffers() {
   const home = Object.keys(me.ties).sort((a, b) => me.ties[b] - me.ties[a]).map(teamBy).filter(Boolean)[0] || S.teams[S.myTeamId];
   const has = (tid, r) => out.some(o => o.teamId === tid && o.role === r);
   if (me.merit >= 0.5 && !has(home.id, 'manager')) out.unshift(offerFor(home.id, 'manager', { hero: true }));
-  if (!out.length) out.push(offerFor(home.id, 'coach', { hero: true }));
+  if (!out.length) out.push(offerFor(home.id, myCoachRole(), { hero: true }));
   return out;
 }
 

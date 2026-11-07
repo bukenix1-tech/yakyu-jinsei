@@ -2,7 +2,7 @@
 
 // 一度開いたら、電波がなくても遊べるようにする（ゲームのファイルをスマホに取っておく）
 // ファイルを直したら CACHE の番号を上げる
-const CACHE = 'yakyujin-v3';
+const CACHE = 'yakyujin-v4';
 const FILES = [
   './', './index.html', './manifest.webmanifest', './css/style.css',
   './js/lz-string.min.js', './js/save-worker.js', './js/util.js', './js/data.js', './js/player.js', './js/sim.js', './js/league.js', './js/career.js', './js/ui.js', './js/ui_career.js', './js/main.js',
