@@ -1515,6 +1515,7 @@ function offFADeclare() {
     const mine = humanFront(t);
     const myChoice = isMe(p) ? S.me.faChoice : null; // 自分のことは自分で決める
     if (isMe(p)) S.me.faChoice = null;
+    if (isMe(p) && S.me.retirePlan) return; // 今季限りで引退する人は宣言しない
     if (myChoice === 'stay') { addNews(`${p.name}は権利を行使せず、残留を決めました。`); return; }
     // 他球団は、いい選手なら引き留める
     const retain = mine ? (F.retain[id] || 0) : (ovr(p) >= 60 && U.chance(0.5) ? 1.2 : 0);
@@ -1588,7 +1589,7 @@ function offFAResolve() {
   const F = S.off.fa;
   F.declared.forEach(d => {
     const p = S.players[d.pid];
-    const bids = d.bids.slice();
+    const bids = d.meStay ? [] : d.meTeam != null ? d.bids.filter(b => b.team === d.meTeam) : d.bids.slice(); // 自分は、選んだ球団に行く
     const mine = F.myBids[d.pid];
     if (mine) bids.push({ team: S.myTeamId, salary: mine.salary, years: mine.years });
     let best = null, bs = -1;
@@ -1597,7 +1598,10 @@ function offFAResolve() {
     if (!best) {
       // どこからも声がかからなければ元の球団に残る（宣言残留）
       signPlayer(from, p);
-      if (isMe(p)) lifeEvent(`どこからも声がかからず、${from.short}に宣言残留`, 'move');
+      if (isMe(p)) {
+        lifeEvent(d.meStay ? `${from.short}に宣言残留` : `どこからも声がかからず、${from.short}に宣言残留`, 'move');
+        if (!d.meStay && !meAuto()) S.me.notices.push({ title: '📰 FA の結果', text: 'どこからも声がかかりませんでした。', sub: `${from.name}に残ります。`, timeline: true });
+      }
       F.results.push({ pid: d.pid, name: p.name, from: d.from, to: d.from, salary: p.salary, years: 1, bids: bids.length, note: '宣言残留' });
       return;
     }

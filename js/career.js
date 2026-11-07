@@ -712,7 +712,18 @@ function draftAutoAll() {
 
 // 球団に任せてキャンプの前まで進める（GM でないとき）
 function autoOffToCamp() {
-  offFAStart(); offFADeclare(); offFAResolve(); faCompSettle();
+  offFAStart(); offFADeclare();
+  // 自分が FA 宣言して声がかかったら、行き先を選ぶまで止まる
+  const d = myFADeclared();
+  if (d && d.bids.length && !meAuto()) { S.me.pick = { kind: 'faTeam' }; return; }
+  autoOffFinish();
+}
+function myFADeclared() {
+  const F = S.off.fa;
+  return F ? F.declared.find(x => S.me.pid === x.pid) || null : null;
+}
+function autoOffFinish() {
+  offFAResolve(); faCompSettle();
   offContract();
   offDraftStart();
   draftAutoAll();
@@ -742,6 +753,10 @@ function choosePick(v) {
   if (!k) return;
   me.pick = null;
   if (k === 'fa') me.faChoice = v;
+  if (k === 'faTeam') {
+    const d = myFADeclared();
+    if (d) { if (v === 'stay') d.meStay = true; else d.meTeam = +v; }
+  }
   if (k === 'retire' && v === 'retire') me.retirePlan = true;
   if (k === 'cut' && v === 'retire' && p) {
     S.freeAgents = S.freeAgents.filter(id => id !== p.id);
@@ -794,7 +809,8 @@ function lifeStep() {
   if (me.offers.length || me.natOffer) return 'offers';
   if (S.off.step === 'review' && nextOffPick()) return 'pick';
   if (S.off.step === 'review') autoOffToCamp();
-  if (me.pick) return 'pick'; // 戦力外になった
+  else if (S.off.step === 'fa' && !me.pick) autoOffFinish(); // FA の行き先を選んだあと
+  if (me.pick) return 'pick'; // FA の行き先を選ぶか、戦力外になった
   if (me.justRetired) {
     me.justRetired = false;
     me.offers = makeRetireOffers();

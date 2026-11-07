@@ -68,8 +68,20 @@ function renderPlayerPick() {
   if (k === 'fa') {
     const t = p.teamId != null ? S.teams[p.teamId] : null;
     return `<section class="card"><h2>📝 FA 権の行使</h2><p>FA 権を持っています。${t ? `${h(t.short)}に残るか、` : ''}宣言してほかの球団の話を聞くかを選んでください。</p>
-      <p class="muted small">いまの年俸 ${U.money(p.salary)} ・ 市場の相場 ${U.money(me.pick.market)}。宣言すると、行き先は条件を見て決まります。</p>
+      <p class="muted small">いまの年俸 ${U.money(p.salary)} ・ 市場の相場 ${U.money(me.pick.market)}。宣言すると、手を挙げた球団の条件を見て行き先を選べます。</p>
       <p>${btn('declare', 'FA 宣言する', 'primary')} ${btn('stay', '残留する')}</p></section>`;
+  }
+  if (k === 'faTeam') {
+    const d = myFADeclared(), from = S.teams[d.from];
+    const rows = d.bids.slice().sort((a, b) => b.salary - a.salary).map(b => {
+      const t = S.teams[b.team];
+      return `<div class="offer" style="--c:${t.color}"><h3>${h(t.name)}${t.id === d.from ? ' <span class="tag">元の球団</span>' : ''}${isHomeTeam(p, t) ? ' <span class="tag">地元</span>' : ''}</h3>
+        <div>年俸 <b>${U.money(b.salary)}</b> ・ ${b.years}年契約</div>
+        <div class="muted small">今季 ${LEAGUE_NAME[t.lg]}${rankOf(t.id)}位 ・ 人気 ${Math.round(t.pop)} ・ ${p.isP ? '投手' : '野手'}の中で${depthAt(t, p)}番手の見込み</div>
+        <p>${btn(b.team, 'ここに決める', 'primary')}</p></div>`;
+    }).join('');
+    return `<section class="card"><h2>📝 FA の行き先</h2><p>${d.bids.length}球団が手を挙げました。いまの年俸は ${U.money(d.oldSalary)} です。</p>${rows}
+      <p>${btn('stay', `${from.short}に宣言残留する`)} <span class="muted small">年俸はいまのままです。</span></p></section>`;
   }
   if (k === 'retire') return `<section class="card"><h2>👋 引退の勧め</h2><p>球団から、そろそろ引退してはどうかと言われました。続けることもできますが、戦力外になるかもしれません。</p>
       <p>${btn('stay', '現役を続ける', 'primary')} ${btn('retire', 'このオフで引退する', 'danger')}</p></section>`;
