@@ -210,7 +210,7 @@ function renderTitle() {
   if (!UI.newSlot) {
     return `
     <div class="title">
-      <h1>⚾ 野球人生</h1>
+      <h1><img class="title-logo" src="icons/icon-192.png" alt="">野球人生</h1>
       <p class="sub">選手として始まり、監督・コーチ・GM と渡り歩く。1 人の野球人の人生。</p>
       <section class="card">
         <h2>データを選んでください</h2>
@@ -225,7 +225,7 @@ function renderTitle() {
   const m = slotMeta(UI.newSlot);
   return `
   <div class="title">
-    <h1>⚾ 野球人生</h1>
+    <h1><img class="title-logo" src="icons/icon-192.png" alt="">野球人生</h1>
     <section class="card">
       <div class="row"><h2>スロット${UI.newSlot}で新しく始める</h2><button data-act="slotBack">◀ もどる</button></div>
       ${m ? `<p class="neg"><b>注意：</b>スロット${UI.newSlot}の「${h(m.team)} ${m.year}年」のデータは消えます。</p>` : ''}

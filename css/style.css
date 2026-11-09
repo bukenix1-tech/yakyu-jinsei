@@ -508,3 +508,4 @@ details.slim summary { cursor: pointer; font-weight: bold; }
 .tl-mini { text-align: left; }
 .tl-season .tl-text { color: var(--muted); font-size: 13px; }
 .tl-total { margin: 0 0 8px; padding: 6px 8px; background: var(--bg); border-radius: 6px; font-size: 13px; }
+.title-logo { width: 1.5em; height: 1.5em; vertical-align: -0.35em; margin-right: 0.2em; }
